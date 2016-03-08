@@ -9,3 +9,4 @@ Debug/
 *.filters
 *.user
 *.sdf
+parser.tab.h

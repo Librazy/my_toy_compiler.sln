@@ -115,7 +115,7 @@
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\LLVM-DBG\include;</AdditionalIncludeDirectories>
@@ -190,7 +190,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="native.cpp" />
     <ClCompile Include="parser.cpp" />
-    <ClCompile Include="token.cpp" />
+    <ClCompile Include="tokens.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FlexLexer.h" />
