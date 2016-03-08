@@ -3,3 +3,9 @@ parser.cpp
 parser.hpp
 tokens.cpp
 parser
+.vs/
+Debug/
+*.opendb
+*.filters
+*.user
+*.sdf

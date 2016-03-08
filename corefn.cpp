@@ -40,7 +40,7 @@ void createEchoFunction(CodeGenContext& context, llvm::Function* printfFn)
                 llvm::Twine("echo"),
                 context.module
            );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(getGlobalContext(), "entry", func, 0);
+    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(getGlobalContext(), "entry", func, nullptr);
 	context.pushBlock(bblock);
     
     const char *constValue = "%d\n";
@@ -56,14 +56,12 @@ void createEchoFunction(CodeGenContext& context, llvm::Function* printfFn)
     indices.push_back(zero);
     indices.push_back(zero);
     llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(
-	llvm::ArrayType::get(llvm::IntegerType::get(getGlobalContext(), 8), strlen(constValue+1)),
-        var, indices);
-
+		nullptr,var, indices);
     std::vector<Value*> args;
     args.push_back(var_ref);
 
     Function::arg_iterator argsValues = func->arg_begin();
-    Value* toPrint = argsValues++;
+    Value* toPrint = argsValues.getNodePtrUnchecked();
     toPrint->setName("toPrint");
     args.push_back(toPrint);
     
