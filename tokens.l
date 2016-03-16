@@ -34,6 +34,7 @@
 "."         					return TOKEN(TDOT);
 ","				          		return TOKEN(TCOMMA);
 
+"^^"				          	return TOKEN(TPOW);
 "+"				          		return TOKEN(TPLUS);
 "-"		          				return TOKEN(TMINUS);
 "*"		          				return TOKEN(TMUL);

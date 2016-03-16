@@ -10,3 +10,4 @@ Debug/
 *.user
 *.sdf
 parser.tab.h
+x64/

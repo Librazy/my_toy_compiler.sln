@@ -7,6 +7,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/CallingConv.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/IRBuilder.h>
