@@ -1,10 +1,10 @@
-extern void printi(int val)
+using std::conio
+using std::string
 
-int do_math(int a) {
-  int x = a * 5
-  return x + 3
+[#entry(i32,string[])]
+fn Example=>i:i32->k:string[]->i32
+{
+	i:i32?[]=k.map((s:string->i32?)=> s.substr(0,1).cast<int>() )
+	j:i32[]=i.filter(!empty)
+	i.map(println);j.map(println)
 }
-
-echo(do_math(11))
-echo(do_math(12))
-printi(10)

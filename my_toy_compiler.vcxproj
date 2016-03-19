@@ -185,20 +185,6 @@
     </Flex>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="codegen.cpp" />
-    <ClCompile Include="corefn.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="native.cpp" />
-    <ClCompile Include="parser.cpp" />
-    <ClCompile Include="tokens.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="FlexLexer.h" />
-    <ClInclude Include="codegen.h" />
-    <ClInclude Include="node.h" />
-    <ClInclude Include="parser.hpp" />
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="example.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
