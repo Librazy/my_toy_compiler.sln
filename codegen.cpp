@@ -3,7 +3,7 @@
 #include "parser.hpp"
 
 using namespace std;
-
+static Function* fun = nullptr;
 
 /* Compile the AST into a module */
 void CodeGenContext::generateCode(NBlock& root)
@@ -55,6 +55,37 @@ static Type* typeOf(const NIdentifier& type)
 	return Type::getVoidTy(getGlobalContext());
 }
 
+static inline Value* cast(Value* op, Type* dest, CodeGenContext& context)
+{
+	if (op->getType() != Type::getDoubleTy(getGlobalContext())) {
+		assert(dest == Type::getDoubleTy(getGlobalContext()) && "Must be an cast to Double!");
+		return new SIToFPInst(op, dest, "", context.currentBlock());
+	}
+	else {
+		assert(op->getType() == Type::getDoubleTy(getGlobalContext()) && "Must be either a Int64 or Double");
+		assert(dest == Type::getInt64Ty(getGlobalContext()) && "Must be an cast to Int64!");
+		return new FPToSIInst(op, dest, "", context.currentBlock());
+	}
+}
+
+static inline Value* castToIfNeed(Value* op, Type* dest, CodeGenContext& context)
+{
+	Value* res;
+	if (op->getType() != dest) {
+		res = cast(op, dest, context);
+	}
+	else res = op;
+	return res;
+}
+static inline Value* ctinDouble(Value* op,CodeGenContext& context)
+{
+	return castToIfNeed(op, Type::getDoubleTy(getGlobalContext()),context);
+}
+
+static inline Value* ctinInt64(Value* op, CodeGenContext& context)
+{
+	return castToIfNeed(op, Type::getInt64Ty(getGlobalContext()), context);
+}
 /* -- Code Generation -- */
 
 Value* NInteger::codeGen(CodeGenContext& context)
@@ -99,41 +130,71 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 {
 	std::cout << "Creating binary operation " << op << endl;
 	Instruction::BinaryOps instr;
-	switch (op) {
-	case TPLUS: instr = Instruction::Add;
-		goto math;
-	case TMINUS: instr = Instruction::Sub;
-		goto math;
-	case TMUL: instr = Instruction::Mul;
-		goto math;
-	case TDIV: instr = Instruction::SDiv;
-		goto math;
-	case TPOW:
-		std::vector<Type *> arg_type;
-		std::vector<Value *> arg;
-		arg.push_back(lhs.codeGen(context));
-		arg.push_back(rhs.codeGen(context));
-		assert(arg.size() == 2 && "Must have 2 args");
-		assert(
-			( (*arg.begin())->getType()== Type::getDoubleTy(getGlobalContext()) ) &&
-			( (*(--arg.end()))->getType()== Type::getDoubleTy(getGlobalContext()) ) &&
-			"Args must be double"
-		);
+	Value* lhs_v = lhs.codeGen(context);
+	Value* rhs_v = rhs.codeGen(context);
+	if (lhs_v->getType() == Type::getInt64Ty(getGlobalContext()) && rhs_v->getType() == Type::getInt64Ty(getGlobalContext())) {
+		switch (op) {
+		case TPLUS: instr = Instruction::Add;
+			goto math;
+		case TMINUS: instr = Instruction::Sub;
+			goto math;
+		case TMUL: instr = Instruction::Mul;
+			goto math;
+		case TDIV: instr = Instruction::SDiv;
+			goto math;
+		case TPOW:
+			std::vector<Type *> arg_type;
+			std::vector<Value *> arg;
 
-		arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
-		arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
+			Value* lhs_v_d = ctinDouble(lhs_v, context);
+			Value* rhs_v_d = ctinDouble(rhs_v, context);
+			arg.push_back(lhs_v_d);
+			arg.push_back(rhs_v_d);
 
-		Function* fun = getDeclaration(context.module, Intrinsic::pow, makeArrayRef(arg_type));
-		fun->setName("llvm.pow.f64");
-		return CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
+			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
+			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
 
-		/* TODO comparison */
+			if (!fun){fun = getDeclaration(context.module, Intrinsic::pow, makeArrayRef(arg_type)); fun->setName("llvm.pow.f64");}
+			Value* res_D = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
+			return ctinInt64(res_D,context);
+			/* TODO comparison */
+		}
+
+		return nullptr;
+	math:
+		return BinaryOperator::Create(instr, lhs_v,
+			rhs_v, "", context.currentBlock());
+	}else {
+		Value* lhs_v_d = ctinDouble(lhs_v, context);
+		Value* rhs_v_d = ctinDouble(rhs_v, context);
+		switch (op) {
+		case TPLUS: instr = Instruction::FAdd;
+			goto mathd;
+		case TMINUS: instr = Instruction::FSub;
+			goto mathd;
+		case TMUL: instr = Instruction::FMul;
+			goto mathd;
+		case TDIV: instr = Instruction::FDiv;
+			goto mathd;
+		case TPOW:
+			std::vector<Type *> arg_type;
+			std::vector<Value *> arg;
+
+			arg.push_back(lhs_v_d);
+			arg.push_back(rhs_v_d);
+
+			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
+			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
+
+			if (!fun){fun = getDeclaration(context.module, Intrinsic::pow, makeArrayRef(arg_type)); fun->setName("llvm.pow.f64");}
+			return CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
+			/* TODO comparison */
+		}
+	mathd:
+		return BinaryOperator::Create(instr, lhs_v_d,
+			rhs_v_d, "", context.currentBlock());
 	}
 
-	return nullptr;
-math:
-	return BinaryOperator::Create(instr, lhs.codeGen(context),
-	                              rhs.codeGen(context), "", context.currentBlock());
 }
 
 Value* NAssignment::codeGen(CodeGenContext& context)
@@ -211,7 +272,6 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 
 	Function::arg_iterator argsValues = function->arg_begin();
 	Value* argumentValue;
-
 	for (it = arguments.begin(); it != arguments.end(); ++it) {
 		(**it).codeGen(context);
 

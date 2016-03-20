@@ -46,9 +46,9 @@
 %type <token> comparison
 
 /* Operator precedence for mathematical operators */
-%left TPOW
 %left TPLUS TMINUS
 %left TMUL TDIV
+%left TPOW
 
 %start program
 
