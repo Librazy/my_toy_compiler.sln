@@ -3,7 +3,6 @@
 #include "parser.hpp"
 
 using namespace std;
-static Function* fun = nullptr;
 
 /* Compile the AST into a module */
 void CodeGenContext::generateCode(NBlock& root)
@@ -52,20 +51,30 @@ static Type* typeOf(const NIdentifier& type)
 	else if (type.name.compare("double") == 0) {
 		return Type::getDoubleTy(getGlobalContext());
 	}
+	else if (type.name.compare("bool") == 0) {
+		return Type::getInt1Ty(getGlobalContext());
+	}
 	return Type::getVoidTy(getGlobalContext());
 }
 
 static inline Value* cast(Value* op, Type* dest, CodeGenContext& context)
 {
-	if (op->getType() != Type::getDoubleTy(getGlobalContext())) {
-		assert(dest == Type::getDoubleTy(getGlobalContext()) && "Must be an cast to Double!");
+	if (op->getType() == Type::getInt64Ty(getGlobalContext()) &&dest == Type::getDoubleTy(getGlobalContext())) {
+		//Int64 -> Double
 		return new SIToFPInst(op, dest, "", context.currentBlock());
-	}
-	else {
-		assert(op->getType() == Type::getDoubleTy(getGlobalContext()) && "Must be either a Int64 or Double");
-		assert(dest == Type::getInt64Ty(getGlobalContext()) && "Must be an cast to Int64!");
+	} else if (op->getType() == Type::getDoubleTy(getGlobalContext()) && dest == Type::getInt64Ty(getGlobalContext())) {
+		//Double -> Int64
 		return new FPToSIInst(op, dest, "", context.currentBlock());
+	} else if (op->getType() == Type::getInt64Ty(getGlobalContext()) && dest == Type::getInt1Ty(getGlobalContext())) {
+		//Int64 -> Boolean
+		return ICmpInst::Create(Instruction::ICmp, ICmpInst::Predicate::ICMP_NE, op, ConstantInt::get(Type::getInt64Ty(getGlobalContext()),0),
+			"", context.currentBlock());
+	} else if (op->getType() == Type::getDoubleTy(getGlobalContext()) && dest == Type::getInt1Ty(getGlobalContext())) {
+		//Double -> Boolean
+		return FCmpInst::Create(Instruction::FCmp, ICmpInst::Predicate::FCMP_ONE, op, ConstantFP::get(Type::getDoubleTy(getGlobalContext()), 0.0),
+			"", context.currentBlock());
 	}
+	llvm_unreachable("Invaild cast!");
 }
 
 static inline Value* castToIfNeed(Value* op, Type* dest, CodeGenContext& context)
@@ -86,7 +95,18 @@ static inline Value* ctinInt64(Value* op, CodeGenContext& context)
 {
 	return castToIfNeed(op, Type::getInt64Ty(getGlobalContext()), context);
 }
+
+static inline Value* ctinBoolean(Value* op, CodeGenContext& context)
+{
+	return castToIfNeed(op, Type::getInt1Ty(getGlobalContext()), context);
+}
 /* -- Code Generation -- */
+
+Value* NBool::codeGen(CodeGenContext& context)
+{
+	std::cout << "Creating boolean: " << value << endl;
+	return ConstantInt::get(Type::getInt1Ty(getGlobalContext()), value, true);
+}
 
 Value* NInteger::codeGen(CodeGenContext& context)
 {
@@ -130,9 +150,13 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 {
 	std::cout << "Creating binary operation " << op << endl;
 	Instruction::BinaryOps instr;
+	Instruction::OtherOps cmpinstr;
+	ICmpInst::Predicate pred;
 	Value* lhs_v = lhs.codeGen(context);
 	Value* rhs_v = rhs.codeGen(context);
+	std::cout << "The operands' types are " << lhs_v->getType()<< " and " << rhs_v->getType() << endl;
 	if (lhs_v->getType() == Type::getInt64Ty(getGlobalContext()) && rhs_v->getType() == Type::getInt64Ty(getGlobalContext())) {
+		cmpinstr = Instruction::ICmp;
 		switch (op) {
 		case TPLUS: instr = Instruction::Add;
 			goto math;
@@ -142,8 +166,32 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 			goto math;
 		case TDIV: instr = Instruction::SDiv;
 			goto math;
+
+		/* TODO comparison */
+		case TEQUAL:
+			pred = ICmpInst::Predicate::ICMP_EQ;
+			goto cmp;
+		case TCNE:
+			pred = ICmpInst::Predicate::ICMP_NE;
+			goto cmp;
+		case TCLT:
+			pred = ICmpInst::Predicate::ICMP_SLT;
+			goto cmp;
+		case TCLE:
+			pred = ICmpInst::Predicate::ICMP_SLE;
+			goto cmp;
+		case TCGT:
+			pred = ICmpInst::Predicate::ICMP_SGT;
+			goto cmp;
+		case TCGE:
+			pred = ICmpInst::Predicate::ICMP_SGE;
+			goto cmp;
+
+		default:
+			llvm_unreachable("Error binop used");
+			break;
+
 		case TPOW:
-			std::vector<Type *> arg_type;
 			std::vector<Value *> arg;
 
 			Value* lhs_v_d = ctinDouble(lhs_v, context);
@@ -151,22 +199,27 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 			arg.push_back(lhs_v_d);
 			arg.push_back(rhs_v_d);
 
-			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
-			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
-
-			if (!fun){fun = getDeclaration(context.module, Intrinsic::pow, makeArrayRef(arg_type)); fun->setName("llvm.pow.f64");}
-			Value* res_D = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
+			Function* fun = context.globalFun.at("pow");
+			CallInst* res_D = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
+			std::cout << "BO:Creating pow call" << endl;
+			std::cout << res_D << endl;
+			std::cout << res_D->getParent() << endl;
+			std::cout << res_D->getParent()->getParent() << endl;
 			return ctinInt64(res_D,context);
-			/* TODO comparison */
 		}
 
 		return nullptr;
 	math:
-		return BinaryOperator::Create(instr, lhs_v,
-			rhs_v, "", context.currentBlock());
+		return BinaryOperator::Create(instr, lhs_v,rhs_v,
+			"", context.currentBlock());
+	cmp:
+		return ICmpInst::Create(cmpinstr, pred, lhs_v, rhs_v,
+			"", context.currentBlock());
+
 	}else {
 		Value* lhs_v_d = ctinDouble(lhs_v, context);
 		Value* rhs_v_d = ctinDouble(rhs_v, context);
+		cmpinstr = Instruction::FCmp;
 		switch (op) {
 		case TPLUS: instr = Instruction::FAdd;
 			goto mathd;
@@ -176,23 +229,53 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 			goto mathd;
 		case TDIV: instr = Instruction::FDiv;
 			goto mathd;
-		case TPOW:
-			std::vector<Type *> arg_type;
-			std::vector<Value *> arg;
+			/* TODO comparison */
+		case TEQUAL:
+			pred = FCmpInst::Predicate::FCMP_OEQ;
+			goto cmpd;
+		case TCNE:
+			pred = FCmpInst::Predicate::FCMP_UNE;
+			goto cmpd;
+		case TCLT:
+			pred = FCmpInst::Predicate::FCMP_OLT;
+			goto cmpd;
+		case TCLE:
+			pred = FCmpInst::Predicate::FCMP_OLE;
+			goto cmpd;
+		case TCGT:
+			pred = FCmpInst::Predicate::FCMP_UGT;
+			goto cmpd;
+		case TCGE:
+			pred = FCmpInst::Predicate::FCMP_UGE;
+			goto cmpd;
 
+		default:
+			llvm_unreachable("Error binop used");
+			break;
+		case TPOW:
+
+			std::vector<Value *> arg;
 			arg.push_back(lhs_v_d);
 			arg.push_back(rhs_v_d);
 
-			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
-			arg_type.push_back(Type::getDoubleTy(getGlobalContext()));
 
-			if (!fun){fun = getDeclaration(context.module, Intrinsic::pow, makeArrayRef(arg_type)); fun->setName("llvm.pow.f64");}
-			return CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
+
+			Function* fun = context.globalFun.at("pow");
+			CallInst* call = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
+			std::cout << "BO:Creating pow call" << endl;
+			std::cout << call << endl;
+			std::cout << call->getParent() << endl;
+			std::cout << call->getParent()->getParent() << endl;
+			return call;
 			/* TODO comparison */
+
 		}
 	mathd:
 		return BinaryOperator::Create(instr, lhs_v_d,
 			rhs_v_d, "", context.currentBlock());
+	cmpd:
+		return FCmpInst::Create(cmpinstr, pred, lhs_v_d, rhs_v_d,
+			"", context.currentBlock());
 	}
 
 }
@@ -233,6 +316,56 @@ Value* NReturnStatement::codeGen(CodeGenContext& context)
 	return returnValue;
 }
 
+Value* NIfBlock::codeGen(CodeGenContext& context)
+{
+	Value *thenValue, *elseValue;
+	BasicBlock* tmp = BasicBlock::Create(getGlobalContext(), "entry", context.currentBlock()->getParent());
+	context.pushBlock(tmp);
+	thenValue = thenblock.codeGen(context);
+	elseValue = elseblock.codeGen(context);
+	context.popBlock();
+	tmp->removeFromParent();
+	assert(thenValue->getType() == elseValue->getType() && "elseblock and thenblock must have the same type!");
+	vector<Type*> argTypes;
+	FunctionType* ftype = FunctionType::get(elseValue->getType(),makeArrayRef(argTypes), false);
+	Function* iff = Function::Create(ftype, GlobalValue::PrivateLinkage, "if", context.module);
+	std::cout << "If:Creating BasicBlocks:"<< iff << endl;
+	BasicBlock* bblock = BasicBlock::Create(getGlobalContext(), "entry", iff);
+	BasicBlock* ThenBB = BasicBlock::Create(getGlobalContext(), "then",  iff);
+	BasicBlock* ElseBB = BasicBlock::Create(getGlobalContext(), "else",  iff);
+	std::cout << bblock << endl;
+	std::cout << ThenBB << endl;
+	std::cout << ElseBB << endl;
+	context.pushBlock(bblock);
+	Value* vcond = ctinBoolean(cond.codeGen(context), context);
+
+	Value *CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond , ConstantInt::get(Type::getInt1Ty(getGlobalContext()), 0), "cond");
+	BranchInst::Create(ThenBB, ElseBB, CondInst, context.currentBlock());
+	context.popBlock();
+
+	std::cout << "Creating Then" << endl;
+	std::cout << ThenBB->getParent() << endl;
+	std::cout << ThenBB->getParent()->getParent() << endl;
+	context.pushBlock(ThenBB);
+	thenValue = thenblock.codeGen(context);
+	context.setCurrentReturnValue(thenValue);
+	ReturnInst::Create(getGlobalContext(), context.getCurrentReturnValue(), ThenBB);
+	context.popBlock();
+
+
+	std::cout << "Creating Else" << endl;
+	std::cout << ElseBB->getParent() << endl;
+	std::cout << ElseBB->getParent()->getParent() << endl;
+	context.pushBlock(ElseBB);
+	elseValue = elseblock.codeGen(context);
+	context.setCurrentReturnValue(elseValue);
+	ReturnInst::Create(getGlobalContext(), context.getCurrentReturnValue(), ElseBB);
+	context.popBlock();
+	
+	vector<Value*> args;
+	CallInst* call = CallInst::Create(iff, makeArrayRef(args), "", context.currentBlock());
+	return call;
+}
 Value* NVariableDeclaration::codeGen(CodeGenContext& context)
 {
 	std::cout << "Creating variable declaration " << type.name << " " << id.name << endl;
@@ -259,6 +392,7 @@ Value* NExternDeclaration::codeGen(CodeGenContext& context)
 
 Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 {
+	std::cout << "Creating function: " << id.name << endl;
 	vector<Type*> argTypes;
 	VariableList::const_iterator it;
 	for (it = arguments.begin(); it != arguments.end(); ++it) {
@@ -266,8 +400,11 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 	}
 	FunctionType* ftype = FunctionType::get(typeOf(type), makeArrayRef(argTypes), false);
 	Function* function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.module);
+	std::cout << "Fn:Creating BasicBlocks:" << function << endl;
 	BasicBlock* bblock = BasicBlock::Create(getGlobalContext(), "entry", function, nullptr);
-
+	std::cout << bblock << endl;
+	std::cout << bblock->getParent() << endl;
+	std::cout << bblock->getParent()->getParent() << endl;
 	context.pushBlock(bblock);
 
 	Function::arg_iterator argsValues = function->arg_begin();
@@ -284,7 +421,6 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 	ReturnInst::Create(getGlobalContext(), context.getCurrentReturnValue(), bblock);
 
 	context.popBlock();
-	std::cout << "Creating function: " << id.name << endl;
 	return function;
 }
 

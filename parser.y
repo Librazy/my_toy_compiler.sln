@@ -19,6 +19,7 @@
 	std::vector<NVariableDeclaration*> *varvec;
 	std::vector<NExpression*> *exprvec;
 	std::string *string;
+	std::string *keyword;
 	int token;
 }
 
@@ -27,10 +28,11 @@
    they represent.
  */
 %token <string> TIDENTIFIER TINTEGER TDOUBLE
+%token <keyword> KIF KTHEN KELSE KRETURN KEXTERN KBFALSE KBTRUE
 %token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV TPOW
-%token <token> TRETURN TEXTERN
+
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -38,7 +40,7 @@
    calling an (NIdentifier*). It makes the compiler happy.
  */
 %type <ident> ident
-%type <expr> numeric expr 
+%type <expr> numeric expr boolean if_block
 %type <varvec> func_decl_args
 %type <exprvec> call_args
 %type <block> program stmts block
@@ -63,7 +65,7 @@ stmts : stmt { $$ = new NBlock(); $$->statements.push_back($<stmt>1); }
 
 stmt : var_decl | func_decl | extern_decl
 	 | expr { $$ = new NExpressionStatement(*$1); }
-	 | TRETURN expr { $$ = new NReturnStatement(*$2); }
+	 | KRETURN expr { $$ = new NReturnStatement(*$2); }
      ;
 
 block : TLBRACE stmts TRBRACE { $$ = $2; }
@@ -74,7 +76,7 @@ var_decl : ident ident { $$ = new NVariableDeclaration(*$1, *$2); }
 		 | ident ident TEQUAL expr { $$ = new NVariableDeclaration(*$1, *$2, $4); }
 		 ;
 
-extern_decl : TEXTERN ident ident TLPAREN func_decl_args TRPAREN
+extern_decl : KEXTERN ident ident TLPAREN func_decl_args TRPAREN
                 { $$ = new NExternDeclaration(*$2, *$3, *$5); delete $5; }
             ;
 
@@ -86,6 +88,13 @@ func_decl_args : /*blank*/  { $$ = new VariableList(); }
 		  | var_decl { $$ = new VariableList(); $$->push_back($<var_decl>1); }
 		  | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); }
 		  ;
+if_block : KIF expr KTHEN block KELSE block
+		   { $$ = new NIfBlock(*$2,*$4,*$6); }
+		 ;
+
+boolean : KBTRUE { $$ = new NBool(true);  }
+		| KBFALSE { $$ = new NBool(false); }
+		;
 
 ident : TIDENTIFIER { $$ = new NIdentifier(*$1); delete $1; }
 	  ;
@@ -93,10 +102,12 @@ ident : TIDENTIFIER { $$ = new NIdentifier(*$1); delete $1; }
 numeric : TINTEGER { $$ = new NInteger(atol($1->c_str())); delete $1; }
 		| TDOUBLE { $$ = new NDouble(atof($1->c_str())); delete $1; }
 		;
-	
+
 expr : ident TEQUAL expr { $$ = new NAssignment(*$<ident>1, *$3); }
+	 | if_block { $$ = $1; }
 	 | ident TLPAREN call_args TRPAREN { $$ = new NMethodCall(*$1, *$3); delete $3; }
 	 | ident { $<ident>$ = $1; }
+	 | boolean
 	 | numeric
          | expr TPOW expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
          | expr TMUL expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
@@ -105,6 +116,7 @@ expr : ident TEQUAL expr { $$ = new NAssignment(*$<ident>1, *$3); }
          | expr TMINUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
  	 | expr comparison expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
      | TLPAREN expr TRPAREN { $$ = $2; }
+	 | block { $$ = $1; }
 	 ;
 	
 call_args : /*blank*/  { $$ = new ExpressionList(); }

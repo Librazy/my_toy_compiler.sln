@@ -27,6 +27,7 @@ public:
     BasicBlock *block;
     Value *returnValue;
     std::map<std::string, Value*> locals;
+    
 };
 
 class CodeGenContext {
@@ -35,7 +36,16 @@ class CodeGenContext {
 
 public:
     Module *module;
-    CodeGenContext():mainFunction(nullptr) { module = new Module("main", getGlobalContext()); }
+	std::map<std::string, Function*> globalFun;
+    CodeGenContext():mainFunction(nullptr)
+    {
+	    module = new Module("main", getGlobalContext());
+		std::vector<Type *> powf_a_t;
+		powf_a_t.push_back(Type::getDoubleTy(getGlobalContext()));
+		powf_a_t.push_back(Type::getDoubleTy(getGlobalContext()));
+		Function* powf = getDeclaration(module, Intrinsic::pow, makeArrayRef(powf_a_t)); powf->setName("llvm.pow.f64");
+		globalFun.insert(std::pair<std::string, Function*>(std::string("pow"), powf));
+    }
     
     void generateCode(NBlock& root);
     GenericValue runCode() const;

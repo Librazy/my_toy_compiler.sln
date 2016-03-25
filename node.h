@@ -23,6 +23,13 @@ class NExpression : public Node {
 class NStatement : public Node {
 };
 
+class NBool : public NExpression {
+public:
+	bool value;
+	NBool(bool value) : value(value) { }
+	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+};
+
 class NInteger : public NExpression {
 public:
 	long long value;
@@ -93,6 +100,17 @@ public:
 	NExpression& expression;
 	NReturnStatement(NExpression& expression) : 
 		expression(expression) { }
+	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+};
+
+class NIfBlock : public NExpression
+{
+public:
+	NExpression& cond;
+	NBlock& thenblock;
+	NBlock& elseblock;
+	NIfBlock(NExpression& cond, NBlock& thenblock, NBlock& elseblock) :
+		cond(cond), thenblock(thenblock), elseblock(elseblock) { };
 	virtual llvm::Value* codeGen(CodeGenContext& context) override;
 };
 

@@ -12,8 +12,13 @@
 %%
 
 [ \t\n]					        ;
-"extern"                        return TOKEN(TEXTERN);
-"return"				        return TOKEN(TRETURN);
+"extern"                        return TOKEN(KEXTERN);
+"return"				        return TOKEN(KRETURN);
+"then"							return TOKEN(KTHEN);
+"else"						    return TOKEN(KELSE);
+"if"							return TOKEN(KIF);
+"true"							return TOKEN(KBTRUE);
+"false"							return TOKEN(KBFALSE);
 [a-zA-Z_][a-zA-Z0-9_]*			SAVE_TOKEN; return TIDENTIFIER;
 [0-9]+\.[0-9]* 					SAVE_TOKEN; return TDOUBLE;
 [0-9]+					        SAVE_TOKEN; return TINTEGER;
@@ -39,7 +44,6 @@
 "-"		          				return TOKEN(TMINUS);
 "*"		          				return TOKEN(TMUL);
 "/"				          		return TOKEN(TDIV);
-
 .								printf("Unknown token!\n"); yyterminate();
 
 %%

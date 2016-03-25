@@ -11,3 +11,6 @@ Debug/
 *.sdf
 parser.tab.h
 x64/
+ipch/
+parser.tab.cpp
+tokens.flex.cpp
