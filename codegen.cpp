@@ -26,8 +26,9 @@ void CodeGenContext::generateCode(NBlock& root)
 	 */
 	std::cout << "Code is generated.\n";
 	PassManager<Module> pm;
+	AnalysisManager<Module>* am = new AnalysisManager<Module>;
 	pm.addPass(PrintModulePass(outs()));
-	pm.run(*module);
+	pm.run(*module,*am);
 }
 
 /* Executes the AST by running the main function */
@@ -318,16 +319,19 @@ Value* NReturnStatement::codeGen(CodeGenContext& context)
 
 Value* NIfBlock::codeGen(CodeGenContext& context)
 {
-	Value *thenValue, *elseValue;
+	Type *thenType, *elseType;
 	BasicBlock* tmp = BasicBlock::Create(getGlobalContext(), "entry", context.currentBlock()->getParent());
 	context.pushBlock(tmp);
-	thenValue = thenblock.codeGen(context);
-	elseValue = elseblock.codeGen(context);
+	thenType = thenblock.codeGen(context)->getType();
+	elseType = elseblock.codeGen(context)->getType();
 	context.popBlock();
-	tmp->removeFromParent();
-	assert(thenValue->getType() == elseValue->getType() && "elseblock and thenblock must have the same type!");
+	//tmp->removeFromParent();
+	tmp->eraseFromParent();
+	//tmp->dropAllReferences();
+	//delete tmp;
+	assert(thenType == elseType && "elseblock and thenblock must have the same type!");
 	vector<Type*> argTypes;
-	FunctionType* ftype = FunctionType::get(elseValue->getType(),makeArrayRef(argTypes), false);
+	FunctionType* ftype = FunctionType::get(elseType,makeArrayRef(argTypes), false);
 	Function* iff = Function::Create(ftype, GlobalValue::PrivateLinkage, "if", context.module);
 	std::cout << "If:Creating BasicBlocks:"<< iff << endl;
 	BasicBlock* bblock = BasicBlock::Create(getGlobalContext(), "entry", iff);
@@ -343,6 +347,7 @@ Value* NIfBlock::codeGen(CodeGenContext& context)
 	BranchInst::Create(ThenBB, ElseBB, CondInst, context.currentBlock());
 	context.popBlock();
 
+	Value *thenValue, *elseValue;
 	std::cout << "Creating Then" << endl;
 	std::cout << ThenBB->getParent() << endl;
 	std::cout << ThenBB->getParent()->getParent() << endl;
