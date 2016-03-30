@@ -16,9 +16,9 @@ void CodeGenContext::generateCode(NBlock& root)
 	BasicBlock* bblock = BasicBlock::Create(getGlobalContext(), "entry", mainFunction, nullptr);
 
 	/* Push a new variable/block context */
-	pushBlock(bblock);
+	pushBlock(bblock,"main");
 	root.codeGen(*this); /* emit bytecode for the toplevel block */
-	ReturnInst::Create(getGlobalContext(), bblock);
+	ReturnInst::Create(getGlobalContext(), currentBlock());
 	popBlock();
 
 	/* Print the bytecode in a human-readable format 
@@ -124,11 +124,12 @@ Value* NDouble::codeGen(CodeGenContext& context)
 Value* NIdentifier::codeGen(CodeGenContext& context)
 {
 	std::cout << "Creating identifier reference: " << name << endl;
-	if (context.locals().find(name) == context.locals().end()) {
+	Value* loc;
+	if (!((loc = context.find_locals(name)))) {
 		std::cerr << "undeclared variable " << name << endl;
 		return nullptr;
 	}
-	return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+	return new LoadInst(loc, "", false, context.currentBlock());
 }
 
 Value* NMethodCall::codeGen(CodeGenContext& context)
@@ -137,13 +138,16 @@ Value* NMethodCall::codeGen(CodeGenContext& context)
 	if (function == nullptr) {
 		std::cerr << "no such function " << id.name << endl;
 	}
+	std::cout << "Creating method call: " << id.name << endl;
 	std::vector<Value*> args;
 	ExpressionList::const_iterator it;
 	for (it = arguments.begin(); it != arguments.end(); ++it) {
+
 		args.push_back((**it).codeGen(context));
+		std::cout << "    arg of type " << args.back()->getType() << endl;
 	}
 	CallInst* call = CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
-	std::cout << "Creating method call: " << id.name << endl;
+
 	return call;
 }
 
@@ -202,10 +206,10 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 
 			Function* fun = context.globalFun.at("pow");
 			CallInst* res_D = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
-			std::cout << "BO:Creating pow call" << endl;
-			std::cout << res_D << endl;
-			std::cout << res_D->getParent() << endl;
-			std::cout << res_D->getParent()->getParent() << endl;
+			//std::cout << "BO:Creating pow call" << endl;
+			//std::cout << res_D << endl;
+			//std::cout << res_D->getParent() << endl;
+			//std::cout << res_D->getParent()->getParent() << endl;
 			return ctinInt64(res_D,context);
 		}
 
@@ -263,10 +267,10 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 
 			Function* fun = context.globalFun.at("pow");
 			CallInst* call = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
-			std::cout << "BO:Creating pow call" << endl;
-			std::cout << call << endl;
-			std::cout << call->getParent() << endl;
-			std::cout << call->getParent()->getParent() << endl;
+			//std::cout << "BO:Creating pow call" << endl;
+			//std::cout << call << endl;
+			//std::cout << call->getParent() << endl;
+			//std::cout << call->getParent()->getParent() << endl;
 			return call;
 			/* TODO comparison */
 
@@ -284,11 +288,13 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 Value* NAssignment::codeGen(CodeGenContext& context)
 {
 	std::cout << "Creating assignment for " << lhs.name << endl;
-	if (context.locals().find(lhs.name) == context.locals().end()) {
+
+	Value* loc;
+	if (!((loc = context.find_locals(lhs.name)))) {
 		std::cerr << "undeclared variable " << lhs.name << endl;
 		return nullptr;
 	}
-	return new StoreInst(rhs.codeGen(context), context.locals()[lhs.name], false, context.currentBlock());
+	return new StoreInst(rhs.codeGen(context), loc, false, context.currentBlock());
 }
 
 Value* NBlock::codeGen(CodeGenContext& context)
@@ -319,57 +325,57 @@ Value* NReturnStatement::codeGen(CodeGenContext& context)
 
 Value* NIfBlock::codeGen(CodeGenContext& context)
 {
+
+	Function* iff = context.currentBlock()->getParent();
+	//std::cout << "If:Creating BasicBlocks:"<< iff << endl;
+	BasicBlock* bblock  = BasicBlock::Create(getGlobalContext(), "if", iff);
+	BasicBlock* ThenBB  = BasicBlock::Create(getGlobalContext(), "then",  iff);
+	BasicBlock* ElseBB  = BasicBlock::Create(getGlobalContext(), "else",  iff);
+	BasicBlock* MergeBB = BasicBlock::Create(getGlobalContext(), "merge", iff);
+	BranchInst::Create(bblock, context.currentBlock());
+	//std::cout << bblock << endl;
+	//std::cout << ThenBB << endl;
+	//std::cout << ElseBB << endl;
+
+	context.pushBlock(bblock,"if",true);
+	Value* vcond = ctinBoolean(cond.codeGen(context), context);
 	Type *thenType, *elseType;
-	BasicBlock* tmp = BasicBlock::Create(getGlobalContext(), "entry", context.currentBlock()->getParent());
-	context.pushBlock(tmp);
+	BasicBlock* tmp = BasicBlock::Create(getGlobalContext(), "tmp", context.currentBlock()->getParent());
+	std::cout << "START type infer" << endl << endl;
+	context.pushBlock(tmp, "tmp", true);
 	thenType = thenblock.codeGen(context)->getType();
 	elseType = elseblock.codeGen(context)->getType();
 	context.popBlock();
-	//tmp->removeFromParent();
+	std::cout << "FINISH type infer" << endl << endl;
 	tmp->eraseFromParent();
-	//tmp->dropAllReferences();
-	//delete tmp;
 	assert(thenType == elseType && "elseblock and thenblock must have the same type!");
-	vector<Type*> argTypes;
-	FunctionType* ftype = FunctionType::get(elseType,makeArrayRef(argTypes), false);
-	Function* iff = Function::Create(ftype, GlobalValue::PrivateLinkage, "if", context.module);
-	std::cout << "If:Creating BasicBlocks:"<< iff << endl;
-	BasicBlock* bblock = BasicBlock::Create(getGlobalContext(), "entry", iff);
-	BasicBlock* ThenBB = BasicBlock::Create(getGlobalContext(), "then",  iff);
-	BasicBlock* ElseBB = BasicBlock::Create(getGlobalContext(), "else",  iff);
-	std::cout << bblock << endl;
-	std::cout << ThenBB << endl;
-	std::cout << ElseBB << endl;
-	context.pushBlock(bblock);
-	Value* vcond = ctinBoolean(cond.codeGen(context), context);
-
+	AllocaInst* alloc = new AllocaInst(elseType, "ifv", context.currentBlock());
 	Value *CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond , ConstantInt::get(Type::getInt1Ty(getGlobalContext()), 0), "cond");
 	BranchInst::Create(ThenBB, ElseBB, CondInst, context.currentBlock());
-	context.popBlock();
 
 	Value *thenValue, *elseValue;
 	std::cout << "Creating Then" << endl;
-	std::cout << ThenBB->getParent() << endl;
-	std::cout << ThenBB->getParent()->getParent() << endl;
-	context.pushBlock(ThenBB);
+	context.pushBlock(ThenBB,"then",true);
 	thenValue = thenblock.codeGen(context);
-	context.setCurrentReturnValue(thenValue);
-	ReturnInst::Create(getGlobalContext(), context.getCurrentReturnValue(), ThenBB);
+	StoreInst* thenStore = new StoreInst(thenValue, alloc, false, context.currentBlock());
+	context.setCurrentReturnValue(thenStore);
+	BranchInst::Create(MergeBB, context.currentBlock());
 	context.popBlock();
 
 
 	std::cout << "Creating Else" << endl;
-	std::cout << ElseBB->getParent() << endl;
-	std::cout << ElseBB->getParent()->getParent() << endl;
-	context.pushBlock(ElseBB);
+	context.pushBlock(ElseBB,"else",true);
 	elseValue = elseblock.codeGen(context);
-	context.setCurrentReturnValue(elseValue);
-	ReturnInst::Create(getGlobalContext(), context.getCurrentReturnValue(), ElseBB);
+	StoreInst* elseStore = new StoreInst(elseValue, alloc, false, context.currentBlock());
+	context.setCurrentReturnValue(elseStore);
+	BranchInst::Create(MergeBB, context.currentBlock());
 	context.popBlock();
-	
-	vector<Value*> args;
-	CallInst* call = CallInst::Create(iff, makeArrayRef(args), "", context.currentBlock());
-	return call;
+
+	context.popBlock();
+
+	context.pushBlock(MergeBB, "join", true);
+	LoadInst* rtv=new LoadInst(alloc, "", false, context.currentBlock());
+	return rtv;
 }
 Value* NVariableDeclaration::codeGen(CodeGenContext& context)
 {
@@ -407,10 +413,10 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 	Function* function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.module);
 	std::cout << "Fn:Creating BasicBlocks:" << function << endl;
 	BasicBlock* bblock = BasicBlock::Create(getGlobalContext(), "entry", function, nullptr);
-	std::cout << bblock << endl;
-	std::cout << bblock->getParent() << endl;
-	std::cout << bblock->getParent()->getParent() << endl;
-	context.pushBlock(bblock);
+	//std::cout << bblock << endl;
+	//std::cout << bblock->getParent() << endl;
+	//std::cout << bblock->getParent()->getParent() << endl;
+	context.pushBlock(bblock,"fn:"+ id.name,true);
 
 	Function::arg_iterator argsValues = function->arg_begin();
 	Value* argumentValue;

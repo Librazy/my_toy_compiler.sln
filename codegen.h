@@ -1,4 +1,5 @@
 #include <stack>
+#include <string>
 #include <typeinfo>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -26,12 +27,14 @@ class CodeGenBlock {
 public:
     BasicBlock *block;
     Value *returnValue;
+	std::string name;
+	bool isTranspent = false;
     std::map<std::string, Value*> locals;
     
 };
 
 class CodeGenContext {
-    std::stack<CodeGenBlock *> blocks;
+    std::vector<CodeGenBlock *> blocks;
     Function *mainFunction;
 
 public:
@@ -49,10 +52,30 @@ public:
     
     void generateCode(NBlock& root);
     GenericValue runCode() const;
-    std::map<std::string, Value*>& locals() { return blocks.top()->locals; }
-    BasicBlock *currentBlock() { return blocks.top()->block; }
-    void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()->returnValue = nullptr; blocks.top()->block = block; }
-    void popBlock() { CodeGenBlock *top = blocks.top(); blocks.pop(); delete top; }
-    void setCurrentReturnValue(Value *value) { blocks.top()->returnValue = value; }
-    Value* getCurrentReturnValue() { return blocks.top()->returnValue; }
+    std::map<std::string, Value*>& locals() { return blocks.back()->locals; }
+    Value* find_locals(std::string& s)
+    {
+		auto i = --blocks.end();
+		std::cout << "start finding " + s << std::endl;
+		do {
+			std::cout << "    finding local "+s+" in bb "+(*i)->name +" "<<&(**i)<< std::endl;
+			std::cout << "      " << (i != blocks.begin()) << " " << ((*i)->isTranspent) << std::endl;
+			if ((*i)->locals.find(s) != (*i)->locals.end()) {
+				return (*i)->locals[s];
+			}
+		} while (((*i)->isTranspent)&& (i-- != blocks.begin()));
+		return nullptr;
+    }
+    BasicBlock *currentBlock() { return blocks.back()->block; }
+	void pushBlock(BasicBlock *block,std::string name , bool trans = false) {
+		std::cout << "    pushing bb " + name + " " << trans << " " <<  block << std::endl;
+		blocks.push_back(new CodeGenBlock()); 
+		blocks.back()->returnValue = nullptr;
+		blocks.back()->block = block;
+		blocks.back()->name = name;
+		blocks.back()->isTranspent = trans;
+	}
+    void popBlock() { CodeGenBlock *top = blocks.back(); blocks.pop_back(); delete top; }
+    void setCurrentReturnValue(Value *value) { blocks.back()->returnValue = value; }
+    Value* getCurrentReturnValue() { return blocks.back()->returnValue; }
 };

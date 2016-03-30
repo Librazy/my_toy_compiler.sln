@@ -41,7 +41,7 @@ void createEchoFunction(CodeGenContext& context, llvm::Function* printfFn)
                 context.module
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(getGlobalContext(), "entry", func, nullptr);
-	context.pushBlock(bblock);
+	context.pushBlock(bblock,"echo");
     
     const char *constValue = "%d\n";
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(getGlobalContext(), constValue);
@@ -85,7 +85,7 @@ void createEchodFunction(CodeGenContext& context, llvm::Function* printfFn)
 		context.module
 		);
 	llvm::BasicBlock *bblock = llvm::BasicBlock::Create(getGlobalContext(), "entry", func, nullptr);
-	context.pushBlock(bblock);
+	context.pushBlock(bblock,"echod");
 
 	const char *constValue = "%lf\n";
 	llvm::Constant *format_const = llvm::ConstantDataArray::getString(getGlobalContext(), constValue);
