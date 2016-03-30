@@ -163,17 +163,20 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 	if (lhs_v->getType() == Type::getInt64Ty(getGlobalContext()) && rhs_v->getType() == Type::getInt64Ty(getGlobalContext())) {
 		cmpinstr = Instruction::ICmp;
 		switch (op) {
-		case TPLUS: instr = Instruction::Add;
+		case TPLUS:
+			instr = Instruction::Add;
 			goto math;
-		case TMINUS: instr = Instruction::Sub;
+		case TMINUS:
+			instr = Instruction::Sub;
 			goto math;
-		case TMUL: instr = Instruction::Mul;
+		case TMUL:
+			instr = Instruction::Mul;
 			goto math;
-		case TDIV: instr = Instruction::SDiv;
+		case TDIV:
+			instr = Instruction::SDiv;
 			goto math;
 
-		/* TODO comparison */
-		case TEQUAL:
+		case TCEQ:
 			pred = ICmpInst::Predicate::ICMP_EQ;
 			goto cmp;
 		case TCNE:
@@ -226,16 +229,20 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 		Value* rhs_v_d = ctinDouble(rhs_v, context);
 		cmpinstr = Instruction::FCmp;
 		switch (op) {
-		case TPLUS: instr = Instruction::FAdd;
+		case TPLUS: 
+			instr = Instruction::FAdd;
 			goto mathd;
-		case TMINUS: instr = Instruction::FSub;
+		case TMINUS:
+			instr = Instruction::FSub;
 			goto mathd;
-		case TMUL: instr = Instruction::FMul;
+		case TMUL:
+			instr = Instruction::FMul;
 			goto mathd;
-		case TDIV: instr = Instruction::FDiv;
+		case TDIV:
+			instr = Instruction::FDiv;
 			goto mathd;
-			/* TODO comparison */
-		case TEQUAL:
+
+		case TCEQ:
 			pred = FCmpInst::Predicate::FCMP_OEQ;
 			goto cmpd;
 		case TCNE:
