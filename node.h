@@ -113,7 +113,15 @@ public:
 		cond(cond), thenblock(thenblock), elseblock(elseblock) { };
 	virtual llvm::Value* codeGen(CodeGenContext& context) override;
 };
-
+class NWhileBlock : public NStatement
+{
+public:
+	NExpression& cond;
+	NBlock& doblock;
+	NWhileBlock(NExpression& cond, NBlock& doblock) :
+		cond(cond), doblock(doblock) { };
+	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+};
 class NVariableDeclaration : public NStatement {
 public:
 	const NIdentifier& type;

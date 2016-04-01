@@ -28,7 +28,7 @@
    they represent.
  */
 %token <string> TIDENTIFIER TINTEGER TDOUBLE
-%token <keyword> KIF KTHEN KELSE KRETURN KEXTERN KBFALSE KBTRUE
+%token <keyword> KIF KTHEN KELSE KRETURN KEXTERN KBFALSE KBTRUE KWHILE
 %token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV TPOW
@@ -44,7 +44,7 @@
 %type <varvec> func_decl_args
 %type <exprvec> call_args
 %type <block> program stmts block
-%type <stmt> stmt var_decl func_decl extern_decl
+%type <stmt> stmt var_decl func_decl extern_decl while_block
 %type <token> comparison
 
 /* Operator precedence for mathematical operators */
@@ -66,7 +66,12 @@ stmts : stmt { $$ = new NBlock(); $$->statements.push_back($<stmt>1); }
 stmt : var_decl | func_decl | extern_decl
 	 | expr { $$ = new NExpressionStatement(*$1); }
 	 | KRETURN expr { $$ = new NReturnStatement(*$2); }
+	 | while_block
      ;
+	
+while_block : KWHILE expr KTHEN block
+			{ $$ = new NWhileBlock(*$2, *$4); }
+			;
 
 block : TLBRACE stmts TRBRACE { $$ = $2; }
 	  | TLBRACE TRBRACE { $$ = new NBlock(); }

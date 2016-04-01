@@ -17,6 +17,7 @@
 "then"							return TOKEN(KTHEN);
 "else"						    return TOKEN(KELSE);
 "if"							return TOKEN(KIF);
+"while"							return TOKEN(KWHILE);
 "true"							return TOKEN(KBTRUE);
 "false"							return TOKEN(KBFALSE);
 [a-zA-Z_][a-zA-Z0-9_]*			SAVE_TOKEN; return TIDENTIFIER;

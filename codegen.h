@@ -1,4 +1,6 @@
 #include <stack>
+#include <vector>
+#include <queue>
 #include <string>
 #include <typeinfo>
 #include <llvm/IR/Module.h>
@@ -36,8 +38,9 @@ public:
 class CodeGenContext {
     std::vector<CodeGenBlock *> blocks;
     Function *mainFunction;
-
+	
 public:
+	bool erasingBlock = false;
     Module *module;
 	std::map<std::string, Function*> globalFun;
     CodeGenContext():mainFunction(nullptr)
@@ -55,17 +58,28 @@ public:
     std::map<std::string, Value*>& locals() { return blocks.back()->locals; }
     Value* find_locals(std::string& s)
     {
-		auto i = --blocks.end();
+		auto i = blocks.end();
 		std::cout << "start finding " + s << std::endl;
 		do {
+			if (i != blocks.begin())--i;
 			std::cout << "    finding local "+s+" in bb "+(*i)->name +" "<<&(**i)<< std::endl;
 			std::cout << "      " << (i != blocks.begin()) << " " << ((*i)->isTranspent) << std::endl;
 			if ((*i)->locals.find(s) != (*i)->locals.end()) {
 				return (*i)->locals[s];
 			}
-		} while (((*i)->isTranspent)&& (i-- != blocks.begin()));
+		} while ((*i)->isTranspent&&i != blocks.begin());
 		return nullptr;
     }
+	std::string trace()
+	{
+		std::string a("");
+		auto i = blocks.end();
+		do {
+			if (i != blocks.begin())--i;
+			a+=(*i)->name+ "_";
+		} while (i != blocks.begin());
+		return a;
+	}
     BasicBlock *currentBlock() { return blocks.back()->block; }
 	void pushBlock(BasicBlock *block,std::string name , bool trans = false) {
 		std::cout << "    pushing bb " + name + " " << trans << " " <<  block << std::endl;
@@ -75,7 +89,12 @@ public:
 		blocks.back()->name = name;
 		blocks.back()->isTranspent = trans;
 	}
-    void popBlock() { CodeGenBlock *top = blocks.back(); blocks.pop_back(); delete top; }
+	void popBlock() {
+		CodeGenBlock *top = blocks.back(); blocks.pop_back(); delete top;
+	}
+	void popTBlock() { while (blocks.back()->isTranspent) { CodeGenBlock *top = blocks.back(); blocks.pop_back(); delete top; } }
+	void popBlockUntil(BasicBlock* b) { while (blocks.back()->block!=b) { CodeGenBlock *top = blocks.back(); blocks.pop_back(); delete top; } }
+
     void setCurrentReturnValue(Value *value) { blocks.back()->returnValue = value; }
     Value* getCurrentReturnValue() { return blocks.back()->returnValue; }
 };
