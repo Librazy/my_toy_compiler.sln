@@ -11,8 +11,8 @@ void CodeGenContext::generateCode(NBlock& root)
 
 	/* Create the top level interpreter function to call as entry */
 	vector<Type*> argTypes;
-	FunctionType* ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), makeArrayRef(argTypes), false);
-	mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", module);
+	FunctionType* ftype = FunctionType::get(Type::getInt32Ty(getGlobalContext()), makeArrayRef(argTypes), false);
+	mainFunction = Function::Create(ftype, GlobalValue::ExternalLinkage, "main", module);
 	BasicBlock* bblock = BasicBlock::Create(getGlobalContext(), "entry", mainFunction, nullptr);
 
 	/* Push a new variable/block context */

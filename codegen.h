@@ -32,7 +32,6 @@ public:
 	std::string name;
 	bool isTranspent = false;
     std::map<std::string, Value*> locals;
-    
 };
 
 class CodeGenContext {
@@ -40,7 +39,6 @@ class CodeGenContext {
     Function *mainFunction;
 	
 public:
-	bool erasingBlock = false;
     Module *module;
 	std::map<std::string, Function*> globalFun;
     CodeGenContext():mainFunction(nullptr)
@@ -49,10 +47,14 @@ public:
 		std::vector<Type *> powf_a_t;
 		powf_a_t.push_back(Type::getDoubleTy(getGlobalContext()));
 		powf_a_t.push_back(Type::getDoubleTy(getGlobalContext()));
-		Function* powf = getDeclaration(module, Intrinsic::pow, makeArrayRef(powf_a_t)); powf->setName("llvm.pow.f64");
-		globalFun.insert(std::pair<std::string, Function*>(std::string("pow"), powf));
+		registeGloIntFun(Intrinsic::pow, "llvm.pow.f64", "pow", powf_a_t);
     }
-    
+
+	void registeGloIntFun(llvm::Intrinsic::ID intid, std::string name, std::string id, llvm::ArrayRef<llvm::Type*> Tys = None)
+	{
+		Function* powf = getDeclaration(module, intid, makeArrayRef(Tys)); powf->setName(name);
+		globalFun.insert(std::pair<std::string, Function*>(id, powf));
+	}
     void generateCode(NBlock& root);
     GenericValue runCode() const;
     std::map<std::string, Value*>& locals() { return blocks.back()->locals; }
