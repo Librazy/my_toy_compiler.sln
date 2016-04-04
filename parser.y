@@ -15,8 +15,9 @@
 	NExpression *expr;
 	NStatement *stmt;
 	NIdentifier *ident;
-	NVariableDeclaration *var_decl;
-	std::vector<NVariableDeclaration*> *varvec;
+	NVariableDeclaration *decl;
+	NVariableDefinition *var_def;
+	std::vector<NVariableDefinition*> *varvec;
 	std::vector<NExpression*> *exprvec;
 	std::string *string;
 	std::string *keyword;
@@ -28,8 +29,8 @@
    they represent.
  */
 %token <string> TIDENTIFIER TINTEGER TDOUBLE
-%token <keyword> KIF KTHEN KELSE KRETURN KEXTERN KBFALSE KBTRUE KWHILE
-%token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
+%token <keyword> KIF KTHEN KELSE KRETURN KEXTERN KBFALSE KBTRUE KWHILE KVAR KFN
+%token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL TCL
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV TPOW
 
@@ -42,9 +43,10 @@
 %type <ident> ident
 %type <expr> numeric expr boolean if_block
 %type <varvec> func_decl_args
+%type <decl> decl
 %type <exprvec> call_args
 %type <block> program stmts block
-%type <stmt> stmt var_decl func_decl extern_decl while_block
+%type <stmt> stmt var_def func_decl extern_decl while_block
 %type <token> comparison
 
 /* Operator precedence for mathematical operators */
@@ -63,7 +65,7 @@ stmts : stmt { $$ = new NBlock(); $$->statements.push_back($<stmt>1); }
 	  | stmts stmt { $1->statements.push_back($<stmt>2); }
 	  ;
 
-stmt : var_decl | func_decl | extern_decl
+stmt : var_def | func_decl | extern_decl
 	 | expr { $$ = new NExpressionStatement(*$1); }
 	 | KRETURN expr { $$ = new NReturnStatement(*$2); }
 	 | while_block
@@ -77,21 +79,23 @@ block : TLBRACE stmts TRBRACE { $$ = $2; }
 	  | TLBRACE TRBRACE { $$ = new NBlock(); }
 	  ;
 
-var_decl : ident ident { $$ = new NVariableDeclaration(*$1, *$2); }
-		 | ident ident TEQUAL expr { $$ = new NVariableDeclaration(*$1, *$2, $4); }
+decl : ident TCL ident  { $$ = new NVariableDeclaration(*$3, *$1); }
+	 ;
+var_def : KVAR decl { $$ = new NVariableDefinition($2->type, $2->id); delete $2;}
+		 | KVAR decl TEQUAL expr { $$ = new NVariableDefinition($2->type, $2->id ,$4); delete $2;}
 		 ;
 
 extern_decl : KEXTERN ident ident TLPAREN func_decl_args TRPAREN
                 { $$ = new NExternDeclaration(*$2, *$3, *$5); delete $5; }
             ;
 
-func_decl : ident ident TLPAREN func_decl_args TRPAREN block 
-			{ $$ = new NFunctionDeclaration(*$1, *$2, *$4, *$6); delete $4; }
+func_decl : KFN decl TLPAREN func_decl_args TRPAREN block 
+			{ $$ = new NFunctionDeclaration($2->type, $2->id, *$4, *$6); delete $4; }
 		  ;
 	
 func_decl_args : /*blank*/  { $$ = new VariableList(); }
-		  | var_decl { $$ = new VariableList(); $$->push_back($<var_decl>1); }
-		  | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); }
+		  | decl { $$ = new VariableList(); $$->push_back(new NVariableDefinition($1->type, $1->id)); delete $1;}
+		  | func_decl_args TCOMMA decl { $1->push_back(new NVariableDefinition($3->type, $3->id)); delete $3;}
 		  ;
 if_block : KIF expr block KELSE block
 		   { $$ = new NIfBlock(*$2,*$3,*$5); }

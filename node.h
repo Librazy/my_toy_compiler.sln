@@ -5,11 +5,11 @@
 class CodeGenContext;
 class NStatement;
 class NExpression;
-class NVariableDeclaration;
+class NVariableDefinition;
 
 typedef std::vector<NStatement*> StatementList;
 typedef std::vector<NExpression*> ExpressionList;
-typedef std::vector<NVariableDeclaration*> VariableList;
+typedef std::vector<NVariableDefinition*> VariableList;
 
 class Node {
 public:
@@ -122,16 +122,24 @@ public:
 		cond(cond), doblock(doblock) { };
 	virtual llvm::Value* codeGen(CodeGenContext& context) override;
 };
-class NVariableDeclaration : public NStatement {
+class NVariableDefinition : public NStatement {
 public:
 	const NIdentifier& type;
 	NIdentifier& id;
 	NExpression *assignmentExpr;
-	NVariableDeclaration(const NIdentifier& type, NIdentifier& id) :
+	NVariableDefinition(const NIdentifier& type, NIdentifier& id) :
 		type(type), id(id) { assignmentExpr = nullptr; }
-	NVariableDeclaration(const NIdentifier& type, NIdentifier& id, NExpression *assignmentExpr) :
+	NVariableDefinition(const NIdentifier& type, NIdentifier& id, NExpression *assignmentExpr) :
 		type(type), id(id), assignmentExpr(assignmentExpr) { }
 	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+};
+class NVariableDeclaration : public NStatement {
+public:
+	const NIdentifier& type;
+	NIdentifier& id;
+	NVariableDeclaration(const NIdentifier& type, NIdentifier& id) :
+		type(type), id(id) {
+	}
 };
 
 class NExternDeclaration : public NStatement {

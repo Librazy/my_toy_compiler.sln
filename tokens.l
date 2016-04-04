@@ -14,6 +14,8 @@
 [ \t\n]					        ;
 "extern"                        return TOKEN(KEXTERN);
 "return"				        return TOKEN(KRETURN);
+"var"							return TOKEN(KVAR);
+"fn"							return TOKEN(KFN);
 "then"							return TOKEN(KTHEN);
 "else"						    return TOKEN(KELSE);
 "if"							return TOKEN(KIF);
@@ -25,6 +27,7 @@
 [0-9]+					        SAVE_TOKEN; return TINTEGER;
 
 "="						        return TOKEN(TEQUAL);
+":"						        return TOKEN(TCL);
 "=="				          	return TOKEN(TCEQ);
 "!="			          		return TOKEN(TCNE);
 "<"				          		return TOKEN(TCLT);

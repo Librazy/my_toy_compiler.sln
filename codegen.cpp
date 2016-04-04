@@ -413,7 +413,7 @@ Value* NWhileBlock::codeGen(CodeGenContext& context)
 	context.pushBlock(MergeBB, "join", true);
 	return condv;
 }
-Value* NVariableDeclaration::codeGen(CodeGenContext& context)
+Value* NVariableDefinition::codeGen(CodeGenContext& context)
 {
 	std::clog << "Creating variable declaration " << type.name << " " << id.name << endl;
 	AllocaInst* alloc = new AllocaInst(typeOf(type), id.name.c_str(), context.currentBlock());
