@@ -45,6 +45,6 @@
 "-"		          				return TOKEN(TMINUS);
 "*"		          				return TOKEN(TMUL);
 "/"				          		return TOKEN(TDIV);
-.								printf("Unknown token!\n"); yyterminate();
+.								std::cerr<<"Unknown token!"<<std::endl; yyterminate();
 
 %%

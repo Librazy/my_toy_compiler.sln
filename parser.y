@@ -70,7 +70,7 @@ stmt : var_decl | func_decl | extern_decl
      ;
 	
 while_block : KWHILE expr block
-			{ $$ = new NWhileBlock(*$2, *$4); }
+			{ $$ = new NWhileBlock(*$2, *$3); }
 			;
 
 block : TLBRACE stmts TRBRACE { $$ = $2; }
@@ -94,7 +94,7 @@ func_decl_args : /*blank*/  { $$ = new VariableList(); }
 		  | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); }
 		  ;
 if_block : KIF expr block KELSE block
-		   { $$ = new NIfBlock(*$2,*$3,*$4); }
+		   { $$ = new NIfBlock(*$2,*$3,*$5); }
 		 ;
 
 boolean : KBTRUE { $$ = new NBool(true);  }

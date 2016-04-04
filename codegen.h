@@ -61,11 +61,11 @@ public:
     Value* find_locals(std::string& s)
     {
 		auto i = blocks.end();
-		std::cout << "start finding " + s << std::endl;
+		std::clog << "start finding " + s << std::endl;
 		do {
 			if (i != blocks.begin())--i;
-			std::cout << "    finding local "+s+" in bb "+(*i)->name +" "<<&(**i)<< std::endl;
-			std::cout << "      " << (i != blocks.begin()) << " " << ((*i)->isTranspent) << std::endl;
+			std::clog << "    finding local "+s+" in bb "+(*i)->name +" "<<&(**i)<< std::endl;
+			std::clog << "      " << (i != blocks.begin()) << " " << ((*i)->isTranspent) << std::endl;
 			if ((*i)->locals.find(s) != (*i)->locals.end()) {
 				return (*i)->locals[s];
 			}
@@ -84,7 +84,7 @@ public:
 	}
     BasicBlock *currentBlock() { return blocks.back()->block; }
 	void pushBlock(BasicBlock *block,std::string name , bool trans = false) {
-		std::cout << "    pushing bb " + name + " " << trans << " " <<  block << std::endl;
+		std::clog << "    pushing bb " + name + " " << trans << " " <<  block << std::endl;
 		blocks.push_back(new CodeGenBlock()); 
 		blocks.back()->returnValue = nullptr;
 		blocks.back()->block = block;

@@ -12,7 +12,7 @@ void createCoreFunctions(CodeGenContext& context);
 int main(int argc, char **argv)
 {
 	yyparse();
-	cout << programBlock << endl;
+	clog << programBlock << endl;
     // see http://comments.gmane.org/gmane.comp.compilers.llvm.devel/33877
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
@@ -20,8 +20,8 @@ int main(int argc, char **argv)
 	CodeGenContext context;
 	createCoreFunctions(context);
 	context.generateCode(*programBlock);
-	context.runCode();
-	
+	GenericValue val=context.runCode();
+	clog << val.IntVal.getSExtValue() << endl;
 	return 0;
 }
 
