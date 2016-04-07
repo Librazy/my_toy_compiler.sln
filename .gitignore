@@ -11,3 +11,6 @@ Debug/
 *.sdf
 parser.tab.h
 x64/
+/my_toy_compiler.VC.db
+/parser.tab.cpp
+/tokens.flex.cpp
