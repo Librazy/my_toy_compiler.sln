@@ -187,6 +187,14 @@
   <ItemGroup>
     <Text Include="example.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="parser.cpp" />
+    <ClCompile Include="tokens.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="node.h" />
+    <ClInclude Include="parser.hpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="win_flex_bison_custom_build.targets" />

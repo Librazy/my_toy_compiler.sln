@@ -1,10 +1,19 @@
 using std::conio
 using std::string
 
-[#entry(i32,string[])]
-fn Example=>i:i32->k:string[]->i32
+
+[#entry(char*,i32)]//Marks the entry point of program
+fn Example char*,i32 =>
 {
-	i:i32?[]=k.map((s:string->i32?)=> s.substr(0,1).cast<int>() )
-	j:i32[]=i.filter(!empty)
-	i.map(println);j.map(println)
+	let s_arr:string[] = {"123","234","none"}
+	var i32_arr:i32[] = Cast( s_arr, 0 )
+
+}
+fn Cast<T1,T2> : T2[] -> T1 -> T1[]
+
+fn Cast source:string[],default:i32 -> i32[] => //Cast an array of string to an array of i32. if cast failed, use i instead.
+{
+	a:i32?[]=source.map(fn s:string->i32? => s.substr(0,1).cast<i32>())
+	b:i32[]=a.map_if(empty,(_)=>default,::id);
+	b
 }
