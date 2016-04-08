@@ -6,6 +6,7 @@
 
 	extern int yylex();
 	void yyerror(const char *s) { std::printf("Error: %s\n", s);std::exit(1); }
+	extern bool term[2];
 %}
 
 /* Represents the many different ways we can access our data */
@@ -61,8 +62,8 @@
 program : stmts { programBlock = $1; }
 		;
 		
-stmts : stmt { $$ = new NBlock(); $$->statements.push_back($<stmt>1); }
-	  | stmts stmt { $1->statements.push_back($<stmt>2); }
+stmts : stmt {if(!term[1]){printf("\nNeed new line or semicolon \n");}$$ = new NBlock(); $$->statements.push_back($<stmt>1); }
+	  | stmts stmt { if(!term[1]){printf("\nNeed new line or semicolon \n");}$1->statements.push_back($<stmt>2); }
 	  ;
 
 stmt : var_def | func_decl | extern_decl
@@ -97,7 +98,9 @@ func_decl_args : /*blank*/  { $$ = new VariableList(); }
 		  | decl { $$ = new VariableList(); $$->push_back(new NVariableDefinition($1->type, $1->id)); delete $1;}
 		  | func_decl_args TCOMMA decl { $1->push_back(new NVariableDefinition($3->type, $3->id)); delete $3;}
 		  ;
-if_block : KIF expr block KELSE block
+if_block : KIF expr KTHEN expr KELSE expr
+		   { $$ = new NIfBlock(*$2,*$4,*$6); }
+		 | KIF expr block KELSE block
 		   { $$ = new NIfBlock(*$2,*$3,*$5); }
 		 ;
 

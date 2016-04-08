@@ -107,9 +107,9 @@ class NIfBlock : public NExpression
 {
 public:
 	NExpression& cond;
-	NBlock& thenblock;
-	NBlock& elseblock;
-	NIfBlock(NExpression& cond, NBlock& thenblock, NBlock& elseblock) :
+	NExpression& thenblock;
+	NExpression& elseblock;
+	NIfBlock(NExpression& cond, NExpression& thenblock, NExpression& elseblock) :
 		cond(cond), thenblock(thenblock), elseblock(elseblock) { };
 	virtual llvm::Value* codeGen(CodeGenContext& context) override;
 };

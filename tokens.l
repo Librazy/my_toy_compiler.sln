@@ -3,15 +3,18 @@
 #include "node.h"
 #include "parser.hpp"
 
-#define SAVE_TOKEN  yylval.string = new std::string(yytext, yyleng)
-#define TOKEN(t)    (yylval.token = t)
+#define SAVE_TOKEN  term[1]=term[0],yylval.string = new std::string(yytext, yyleng)
+#define TOKEN(t)    (term[1]=term[0],term[0]=false,yylval.token = t)
+#define TERM		term[0]=true;
+bool term[2];
 %}
-
 %option noyywrap
 
 %%
 
-[ \t\n]					        ;
+[ \t]					        ;
+[\n]							TERM;
+";"								TERM;
 "extern"                        return TOKEN(KEXTERN);
 "return"				        return TOKEN(KRETURN);
 "var"							return TOKEN(KVAR);
@@ -38,7 +41,7 @@
 "("	          					return TOKEN(TLPAREN);
 ")"					          	return TOKEN(TRPAREN);
 "{"         					return TOKEN(TLBRACE);
-"}"					          	return TOKEN(TRBRACE);
+"}"					          	TERM;return TOKEN(TRBRACE);
 
 "."         					return TOKEN(TDOT);
 ","				          		return TOKEN(TCOMMA);
