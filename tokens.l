@@ -39,12 +39,12 @@ bool term[2];
 ">="					        return TOKEN(TCGE);
 
 "("	          					return TOKEN(TLPAREN);
-")"					          	return TOKEN(TRPAREN);
+")"					          	TERM;return TOKEN(TRPAREN);
 "{"         					return TOKEN(TLBRACE);
 "}"					          	TERM;return TOKEN(TRBRACE);
 
 "."         					return TOKEN(TDOT);
-","				          		return TOKEN(TCOMMA);
+","				          		TERM;return TOKEN(TCOMMA);
 
 "^^"				          	return TOKEN(TPOW);
 "+"				          		return TOKEN(TPLUS);
