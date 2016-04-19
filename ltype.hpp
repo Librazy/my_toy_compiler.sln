@@ -167,6 +167,8 @@ namespace LIL {
 
 		static LFunctionTy const* getFunctionTy(CodeGenC& context, LTycpvT arg_and_ret, bool is_var_arg);
 
+		std::string getID() const override;
+
 	protected:
 		LFunctionTy(CodeGenC& context, LTycpvT arg_and_ret, bool is_var_arg);
 		LFunctionTy(CodeGenC& context, LTycpvT arg, LTycpT ret, bool is_var_arg);
@@ -179,6 +181,8 @@ namespace LIL {
 
 		static LArrayTy const* getArrayTy(CodeGenC& context, LTycpT type, uint64_t size);
 
+		std::string getID() const override;
+
 	protected:
 		LArrayTy(CodeGenC& context, LTycpT type, uint64_t size);
 	};
@@ -189,6 +193,8 @@ namespace LIL {
 
 		static LRefTy const* getRefTy(CodeGenC& context, LTycpT type);
 
+		std::string getID() const override;
+
 	protected:
 		LRefTy(CodeGenC& context, LTycpT type);
 	};
@@ -198,6 +204,8 @@ namespace LIL {
 	public:
 
 		static LPointerTy const* getPointerTy(CodeGenC& context, LTycpT type);
+
+		std::string getID() const override;
 
 	protected:
 		LPointerTy(CodeGenC& context, LTycpT type);

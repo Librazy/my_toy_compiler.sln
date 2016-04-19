@@ -360,6 +360,14 @@ namespace LIL {
 		LLVMTy = llvm::FunctionType::get(ret->LLVMTy, llvm::ArrayRef<LLVMTypT>(llarg), is_var_arg);
 	}
 
+	std::string LFunctionTy::getID() const
+	{
+		std::string ret = "( ";
+		std::for_each(dep.begin(), --dep.end(), [&ret](LTycpT i) {ret += i->getID() + " -> "; });
+		ret += (*--dep.end())->getID() + " )";
+		return ret;
+	}
+
 	LFunctionTy const* LFunctionTy::getFunctionTy(CodeGenC& context, LTycpvT arg_and_ret, bool is_var_arg)
 	{
 		auto ret = arg_and_ret.back();
@@ -390,6 +398,11 @@ namespace LIL {
 	LArrayTy::LArrayTy(CodeGenC& context, LTycpT type, uint64_t size) :
 		LType(ARRAY, llvm::ArrayType::get(type->LLVMTy, size), { type }), size(size) {}
 
+	std::string LArrayTy::getID() const
+	{
+		return dep.front()->getID() + "[" + std::to_string(size) + "]";
+	}
+
 	LArrayTy const* LArrayTy::getArrayTy(CodeGenC& context, LTycpT type, uint64_t size)
 	{
 		auto key = std::make_pair(type, size);
@@ -405,6 +418,11 @@ namespace LIL {
 	LRefTy::LRefTy(CodeGenC& context, LTycpT type) :
 		LType(REF, llvm::PointerType::get(type->LLVMTy, 0), { type }) {}
 
+	std::string LRefTy::getID() const
+	{
+		return dep.front()->getID() + "&";
+	}
+
 	LRefTy const* LRefTy::getRefTy(CodeGenC& context, LTycpT type)
 	{
 		auto i = context.RefTys.find(type);
@@ -417,6 +435,11 @@ namespace LIL {
 
 	LPointerTy::LPointerTy(CodeGenC& context, LTycpT type) :
 		LType(RAWPOINTER, llvm::PointerType::get(type->LLVMTy, 0), { type }) {}
+
+	std::string LPointerTy::getID() const
+	{
+		return dep.front()->getID() + "*";
+	}
 
 	LPointerTy const* LPointerTy::getPointerTy(CodeGenC& context, LTycpT type)
 	{
