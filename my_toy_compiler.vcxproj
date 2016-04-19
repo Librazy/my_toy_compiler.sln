@@ -195,6 +195,8 @@
     <ClCompile Include="tokens.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="codegencontext.hpp" />
+    <ClInclude Include="common.hpp" />
     <ClInclude Include="ltype.hpp" />
     <ClInclude Include="lvalue.hpp" />
     <ClInclude Include="node.hpp" />
