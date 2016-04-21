@@ -4,7 +4,7 @@ fn do_math:int(a:int) {
 }
 
 echo(if {var x:int = 10;x>2}
-then x; else {x=x+10;do_math(x^^2);}
+then x; else {x=x+10;11}
 )
 
 

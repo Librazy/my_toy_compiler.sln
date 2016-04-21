@@ -24,7 +24,6 @@
 using namespace llvm;
 
 class NBlock;
-
 class CodeGenBlock {
 public:
     BasicBlock *block;
@@ -37,16 +36,16 @@ public:
 class CodeGenContext {
     std::vector<CodeGenBlock *> blocks;
     Function *mainFunction;
-	
 public:
     Module *module;
+	LLVMContext TheContext;
 	std::map<std::string, Function*> globalFun;
-    CodeGenContext():mainFunction(nullptr)
+    CodeGenContext():mainFunction(nullptr),TheContext()
     {
-	    module = new Module("main", getGlobalContext());
+	    module = new Module("main", TheContext);
 		std::vector<Type *> powf_a_t;
-		powf_a_t.push_back(Type::getDoubleTy(getGlobalContext()));
-		powf_a_t.push_back(Type::getDoubleTy(getGlobalContext()));
+		powf_a_t.push_back(Type::getDoubleTy(TheContext));
+		powf_a_t.push_back(Type::getDoubleTy(TheContext));
 		registeGloIntFun(Intrinsic::pow, "llvm.pow.f64", "pow", powf_a_t);
     }
 

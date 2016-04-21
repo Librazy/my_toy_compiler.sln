@@ -119,6 +119,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\LLVM-DBG\include;</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4820;4625;4626;4365;5027;4514;4710;4265;4061;4668;4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <SDLCheck>false</SDLCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
