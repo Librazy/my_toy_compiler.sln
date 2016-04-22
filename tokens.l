@@ -4,8 +4,7 @@
 #include "parser.hpp"
 
 //Some code copied from https://github.com/elite-lang/RedApple
-
-
+using namespace LIL;
 #define SAVE_TOKEN	   yylval.lit = new std::string(yytext, yyleng)
 #define SAVE_LOC	   saveLocation()
 #define TOKEN(t)	   (yylval.token = t)
@@ -14,8 +13,6 @@
 int charno = 1;
 int status;
 std::wstring strBuf;
-YYLTYPE yylloc;
-YYSTYPE yylval;
 extern void yyerror(const char*);
 void saveLocation(){
 	yylloc.first_line = yylineno;

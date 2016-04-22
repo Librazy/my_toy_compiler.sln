@@ -12,12 +12,12 @@ extern size_t yyleng;
 extern FILE *yyin;
 void yyerror(const char *msg){
 	std::cout<<yylineno<<":"<<(charno-yyleng)<<": error: "<<msg<<std::endl;
-	if(yyin != NULL){
+	if(yyin != nullptr){
 		fclose(yyin);
 	}
 	exit(1);
 }
-namespace LIL{
+using namespace LIL;
 NBlock *programBlock; /* the top level root node of our final AST */
 
 void setNodeLocation(Node *node,YYLTYPE *loc){
@@ -31,7 +31,7 @@ void setLocation(Node *node,YYLTYPE *loc,YYLTYPE *firstLoc,YYLTYPE *lastLoc){
 	loc->first_column = firstLoc->first_column;
 	loc->last_line = lastLoc->last_line;
 	loc->last_column = lastLoc->last_column;
-	if(node != NULL){
+	if(node != nullptr){
 		setNodeLocation(node,loc);
 	}
 }
@@ -41,7 +41,7 @@ void setLocation(Node *node,YYLTYPE *loc){
 	loc->first_column = charno;
 	loc->last_line = yylineno;
 	loc->last_column = charno-1;
-	if(node != NULL){
+	if(node != nullptr){
 		setNodeLocation(node,loc);
 	}
 }
@@ -177,4 +177,3 @@ void setLocation(Node *node,YYLTYPE *loc){
 	comparison : BCEQ | BCNE | BCLT | BCLE | BCGT | BCGE;
 
 	%%
-	}
