@@ -119,6 +119,8 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\LLVM-DBG\include;</AdditionalIncludeDirectories>
+      <SDLCheck>false</SDLCheck>
+      <DisableSpecificWarnings>4365;5027;4820;4267;4710;5026;4702;4514;4005;4625;</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,6 +157,8 @@
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\LLVM-Bin\include;</AdditionalIncludeDirectories>
+      <SDLCheck>false</SDLCheck>
+      <DisableSpecificWarnings>4365;5027;4820;4267;4710;5026;4702;4514;4005;4625;</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

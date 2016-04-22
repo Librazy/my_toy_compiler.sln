@@ -15,6 +15,7 @@ int charno = 1;
 int status;
 std::wstring strBuf;
 YYLTYPE yylloc;
+YYSTYPE yylval;
 extern void yyerror(const char*);
 void saveLocation(){
 	yylloc.first_line = yylineno;

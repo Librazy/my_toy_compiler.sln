@@ -32,7 +32,7 @@ namespace LIL {
 	protected:
 		explicit LType(Kind kind, LTycpvT dep = LTycpvT());
 		LType(Kind kind, LLVMTypT LLVMTy, LTycpvT dep = LTycpvT());
-		LType(Kind kind, LLVMTypT LLVMTy, std::initializer_list<LType> deps);
+		LType(Kind kind, LLVMTypT LLVMTy, std::initializer_list<LTycpT> deps);
 	};
 
 	class LGenTy :public LType

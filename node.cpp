@@ -40,6 +40,11 @@ namespace LIL {
 		return nullptr;
 	}
 
+	LValpT NExpressionList::codeGen(CodeGenC& context)
+	{
+		return nullptr;
+	}
+
 	LValpT NReturn::codeGen(CodeGenC& context)
 	{
 		return nullptr;
@@ -56,6 +61,11 @@ namespace LIL {
 	}
 
 	LValpT NVariableDefinition::codeGen(CodeGenC& context)
+	{
+		return nullptr;
+	}
+
+	LValpT NVariableList::codeGen(CodeGenC& context)
 	{
 		return nullptr;
 	}

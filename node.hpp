@@ -65,13 +65,21 @@ namespace LIL {
 		virtual LValpT codeGen(CodeGenC& context) override;
 	};
 
+	class NExpressionList : public Node {
+	public:
+		ExpressionList list;
+		NExpressionList(ExpressionList expressions) :
+			list(expressions) { }
+		virtual LValpT codeGen(CodeGenC& context) override;
+	};
+
 	class NMethodCall : public Node {
 	public:
 		const NIdentifier& id;
-		ExpressionList arguments;
-		NMethodCall(const NIdentifier& id, ExpressionList& arguments) :
+		NExpressionList arguments;
+		NMethodCall(const NIdentifier& id, NExpressionList& arguments) :
 			id(id), arguments(arguments) { }
-		NMethodCall(const NIdentifier& id) : id(id) { }
+		NMethodCall(const NIdentifier& id) : id(id), arguments(ExpressionList()){ }
 		virtual LValpT codeGen(CodeGenC& context) override;
 	};
 
@@ -100,6 +108,7 @@ namespace LIL {
 		NBlock() { }
 		virtual LValpT codeGen(CodeGenC& context) override;
 	};
+
 
 	class NReturn : public Node {
 	public:
@@ -148,6 +157,13 @@ namespace LIL {
 			type(decl.type), id(decl.id), assignmentExpr(assignmentExpr) { }
 		virtual LValpT codeGen(CodeGenC& context) override;
 	};
+	class NVariableList : public Node {
+	public:
+		VariableList list;
+		NVariableList(const VariableList& list) :
+			list(list) { }
+		virtual LValpT codeGen(CodeGenC& context) override;
+	};
 
 	class NExternDeclaration : public Node {
 	public:
@@ -155,8 +171,8 @@ namespace LIL {
 		const NIdentifier& id;
 		VariableList arguments;
 		NExternDeclaration(const NIdentifier& type, const NIdentifier& id,
-			const VariableList& arguments) :
-			type(type), id(id), arguments(arguments) {}
+			const NVariableList& arguments) :
+			type(type), id(id), arguments(arguments.list) {}
 		virtual LValpT codeGen(CodeGenC& context) override;
 	};
 
@@ -167,8 +183,8 @@ namespace LIL {
 		VariableList arguments;
 		NBlock& block;
 		NFunctionDeclaration(const NIdentifier& type, const NIdentifier& id,
-			const VariableList& arguments, NBlock& block) :
-			type(type), id(id), arguments(arguments), block(block) { }
+			const NVariableList& arguments, NBlock& block) :
+			type(type), id(id), arguments(arguments.list), block(block) { }
 		virtual LValpT codeGen(CodeGenC& context) override;
 	};
 }

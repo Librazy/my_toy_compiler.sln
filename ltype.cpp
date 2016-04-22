@@ -10,7 +10,7 @@ namespace LIL {
 
 	LType::LType(Kind kind, LLVMTypT LLVMTy, LTycpvT dep /*= LTycpvT()*/) : kind(kind), LLVMTy(LLVMTy), dep(dep) {}
 
-	LType::LType(Kind kind, LLVMTypT LLVMTy, std::initializer_list<LType> deps) : kind(kind), LLVMTy(LLVMTy)
+	LType::LType(Kind kind, LLVMTypT LLVMTy, std::initializer_list<LTycpT> deps) : kind(kind), LLVMTy(LLVMTy)
 	{
 		for (auto i : deps) { dep.emplace_back(i); }
 	}
@@ -347,7 +347,7 @@ namespace LIL {
 		LTycpT ret = arg_and_ret.back();
 		arg_and_ret.pop_back();
 		LLVMTypvT llarg;
-		std::transform(arg_and_ret.begin(), arg_and_ret.end(), std::back_inserter(llarg), [](LType i) {return i.LLVMTy; });
+		std::transform(arg_and_ret.begin(), arg_and_ret.end(), std::back_inserter(llarg), [](LTycpT i) {return i->LLVMTy; });
 		LLVMTy = llvm::FunctionType::get(ret->LLVMTy, llvm::ArrayRef<LLVMTypT>(llarg), is_var_arg);
 	}
 
@@ -356,7 +356,7 @@ namespace LIL {
 	{
 		dep.push_back(ret);
 		LLVMTypvT llarg;
-		std::transform(arg.begin(), arg.end(), std::back_inserter(llarg), [](LType i) {return i.LLVMTy; });
+		std::transform(arg.begin(), arg.end(), std::back_inserter(llarg), [](LTycpT i) {return i->LLVMTy; });
 		LLVMTy = llvm::FunctionType::get(ret->LLVMTy, llvm::ArrayRef<LLVMTypT>(llarg), is_var_arg);
 	}
 
@@ -470,7 +470,7 @@ namespace LIL {
 		std::vector<LLVMTypT> fieldTypes;
 		std::string name="{";
 		std::transform(type.begin(), type.end(), fieldTypes.begin(), 
-			[&dep = (this->dep), &fields = (this->fields), &name](LTycpT i) {dep.push_back(i); name += i->getID() + ","; fields.emplace_back(std::make_pair(i->LLVMTy, pub)); return i->LLVMTy;});
+			[&dep = (this->dep), &fields = (this->fields), &name](LTycpT i) {dep.push_back(i); name += i->getID() + ","; fields.emplace_back(std::make_pair(i, pub)); return i->LLVMTy;});
 		name.back()='}';
 		auto structTy = llvm::StructType::get(context.LLVMC, llvm::makeArrayRef(fieldTypes));
 		this->name = name;

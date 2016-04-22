@@ -1,18 +1,15 @@
 %{
-	#include "node.hpp"
-	#include "parser.hpp"
-    #include <cstdio>
-    #include <cstdlib>
-    #include <string>
-    #include <cstring>
-	NBlock *programBlock; /* the top level root node of our final AST */
-
-	extern int yylex();
-	extern int yylineno;
-	extern int charno;
-	extern int yyleng;
-	extern FILE *yyin;
-
+#include "node.hpp"
+#include "parser.hpp"
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <cstring>
+extern int yylex();
+extern int yylineno;
+extern int charno;
+extern size_t yyleng;
+extern FILE *yyin;
 void yyerror(const char *msg){
 	std::cout<<yylineno<<":"<<(charno-yyleng)<<": error: "<<msg<<std::endl;
 	if(yyin != NULL){
@@ -20,6 +17,9 @@ void yyerror(const char *msg){
 	}
 	exit(1);
 }
+namespace LIL{
+NBlock *programBlock; /* the top level root node of our final AST */
+
 void setNodeLocation(Node *node,YYLTYPE *loc){
 	node->firstLine = loc->first_line;
 	node->firstColumn = loc->first_line;
@@ -54,13 +54,13 @@ void setLocation(Node *node,YYLTYPE *loc){
 
 /* Represents the many different ways we can access our data */
 %union {
-	Node *node;
-	NBlock *block;
-	Node *expr;
-	NIdentifier *ident;
-	NVariableDeclaration *decl;
-	std::vector<NVariableDeclaration*> *varvec;
-	std::vector<Node*> *exprvec;
+	LIL::Node *node;
+	LIL::NBlock *block;
+	LIL::Node *expr;
+	LIL::NIdentifier *ident;
+	LIL::NVariableDeclaration *decl;
+	LIL::NVariableList *varvec;
+	LIL::NExpressionList *exprvec;
 	std::string *lit;
 	std::string *keyword;
 	int32_t wchar;
@@ -131,9 +131,9 @@ void setLocation(Node *node,YYLTYPE *loc){
 				{ $$ = new NFunctionDeclaration(*$5, *$2, *$3, *$7); setLocation($$,&@$,&@1,&@7);delete $3; }
 			  ;
 	
-	func_decl_args : /*blank*/ { $$ = new VariableList(); setLocation($$,&@$);}
-			  | decl { $$ = new VariableList(); $$->push_back($1);setLocation($$,&@$,&@1,&@1); delete $1;}
-			  | func_decl_args COMMA decl { $1->push_back($3); setLocation(nullptr,&@$,&@1,&@3);delete $3;}
+	func_decl_args : /*blank*/ { $$ =new NVariableList(VariableList()); setLocation($$,&@$);}
+			  | decl { $$ = new NVariableList(VariableList()); $$->list.push_back($1); setLocation($$,&@$,&@1,&@1); delete $1;}
+			  | func_decl_args COMMA decl { $1->list.push_back($3); setLocation(nullptr,&@$,&@1,&@3);delete $3;}
 			  ;
 	if_block : KIF expr block KELSE block
 			   { $$ = new NIfBlock(*$2,*$3,*$5);setLocation($$,&@$,&@1,&@5); }
@@ -169,11 +169,12 @@ void setLocation(Node *node,YYLTYPE *loc){
 		 | block { $$ = $1; setLocation(nullptr,&@$,&@1,&@1);}
 		 ;
 	
-	call_args : /*blank*/  { $$ = new ExpressionList(); setLocation(nullptr,&@$);}
-			  | expr { $$ = new ExpressionList(); $$->push_back($1); setLocation($$,&@$,&@1,&@1);}
-			  | call_args COMMA expr  { $1->push_back($3); setLocation(nullptr,&@$,&@1,&@3);}
+	call_args : /*blank*/  { $$ = new NExpressionList(ExpressionList()); setLocation(nullptr,&@$);}
+			  | expr { $$ = new NExpressionList(ExpressionList()); $$->list.push_back($1); setLocation($$,&@$,&@1,&@1);}
+			  | call_args COMMA expr  { $1->list.push_back($3); setLocation(nullptr,&@$,&@1,&@3);}
 			  ;
 
 	comparison : BCEQ | BCNE | BCLT | BCLE | BCGT | BCGE;
 
 	%%
+	}
