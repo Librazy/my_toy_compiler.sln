@@ -175,6 +175,8 @@
       <DefinesFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).hpp</DefinesFile>
       <OutputFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).cpp</OutputFile>
       <DefinesFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).hpp</DefinesFile>
+      <DefinesFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).hpp</DefinesFile>
+      <OutputFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).cpp</OutputFile>
     </Bison>
     <None Include="README.md" />
     <Flex Include="tokens.l">
@@ -183,6 +185,7 @@
       <OutputFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).cpp</OutputFile>
       <LexCompat Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</LexCompat>
       <OutputFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).cpp</OutputFile>
+      <OutputFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).cpp</OutputFile>
     </Flex>
   </ItemGroup>
   <ItemGroup>
