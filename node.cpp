@@ -1,6 +1,6 @@
 #include "node.hpp"
 namespace LIL {
-	LValpT LIL::NBool::codeGen(CodeGenC& context)
+	LValpT NBool::codeGen(CodeGenC& context)
 	{
 		return nullptr;
 	}

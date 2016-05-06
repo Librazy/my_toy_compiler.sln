@@ -83,12 +83,12 @@ void setLocation(Node *node,YYLTYPE *loc){
 	   we call an ident (defined by union type ident) we are really
 	   calling an (NIdentifier*). It makes the compiler happy.*/
 
-	%type <ident> ident
-	%type <expr> numeric expr boolean if_block var_def func_decl while_block
-	%type <varvec> func_decl_args
-	%type <decl> decl
-	%type <exprvec> call_args
-	%type <block> program exprs block
+	%type <ident> 
+	%type <expr> 
+	%type <varvec> 
+	%type <decl> 
+	%type <exprvec> 
+	%type <block> 
 	%type <token> comparison
 
 	// Operator precedence for mathematical operators 
@@ -104,75 +104,7 @@ void setLocation(Node *node,YYLTYPE *loc){
 
 %%
 
-	program : exprs { programBlock = $1; setLocation(nullptr,&@$);}
-			;
-		
-	exprs :	{ $$ = new NBlock(); setLocation($$,&@$);}
-		  | expr { $$ = new NBlock(); $$->expressions.push_back($<expr>1); setLocation($$,&@$,&@1,&@1);}
-		  | exprs expr { $1->expressions.push_back($<expr>2); setLocation(nullptr,&@$,&@1,&@2);}
-		  ;
-	
-	while_block : KWHILE expr block
-				{ $$ = new NWhileBlock(*$2, *$3); setLocation($$,&@$,&@1,&@3);}
-				;
 
-	block : LBRACE exprs RBRACE { $$ = $2; setLocation($$,&@$,&@1,&@3);}
-		  | LBRACE RBRACE { $$ = new NBlock(); setLocation($$,&@$,&@1,&@2);}
-		  ;
-
-	decl : ident OCL ident  { $$ = new NVariableDeclaration(*$3, *$1); setLocation($$,&@$,&@1,&@3);}
-		 ;
-	var_def : KVAR decl { $$ = new NVariableDefinition(*$2); setLocation($$,&@$,&@1,&@2);delete $2;}
-			 | KVAR decl OEQS expr { $$ = new NVariableDefinition(*$2 ,$4); setLocation($$,&@$,&@1,&@4);delete $2;}
-			 ;
-
-
-	func_decl : KFN ident func_decl_args ORF ident OFN block 
-				{ $$ = new NFunctionDeclaration(*$5, *$2, *$3, *$7); setLocation($$,&@$,&@1,&@7);delete $3; }
-			  ;
-	
-	func_decl_args : /*blank*/ { $$ =new NVariableList(VariableList()); setLocation($$,&@$);}
-			  | decl { $$ = new NVariableList(VariableList()); $$->list.push_back($1); setLocation($$,&@$,&@1,&@1); delete $1;}
-			  | func_decl_args COMMA decl { $1->list.push_back($3); setLocation(nullptr,&@$,&@1,&@3);delete $3;}
-			  ;
-	if_block : KIF expr block KELSE block
-			   { $$ = new NIfBlock(*$2,*$3,*$5);setLocation($$,&@$,&@1,&@5); }
-			 ;
-
-	boolean : KBTRUE { $$ = new NBool(true);  setLocation($$,&@$,&@1,&@1);}
-			| KBFALSE { $$ = new NBool(false);setLocation($$,&@$,&@1,&@1); }
-			;
-
-	ident : IDENTIFIER { $$ = new NIdentifier(*$1); setLocation($$,&@$,&@1,&@1);delete $1; }
-		  ;
-
-	numeric : INTEGER { $$ = new NInteger(atol($1->c_str())); setLocation($$,&@$,&@1,&@1);delete $1; }
-			| FLOATPOINT { $$ = new NDouble(atof($1->c_str()));setLocation($$,&@$,&@1,&@1); delete $1; }
-			;
-
-	expr : var_def { $$ = $1;setLocation(nullptr,&@$,&@1,&@1); } | func_decl { $$ = $1;setLocation(nullptr,&@$,&@1,&@1); } 
-		 | KRETURN expr { $$ = new NReturn(*$2);setLocation($$,&@$,&@1,&@2); }
-		 | while_block { $$ = $1;setLocation(nullptr,&@$,&@1,&@1); }
-		 | ident OEQS expr { $$ = new NAssignment(*$<ident>1, *$3);setLocation($$,&@$,&@1,&@3); }
-		 | if_block { $$ = $1;setLocation(nullptr,&@$,&@1,&@1); }
-		 | ident LPAREN call_args RPAREN { $$ = new NMethodCall(*$1, *$3); setLocation($$,&@$,&@1,&@4);delete $3; }
-		 | ident { $<ident>$ = $1; setLocation(nullptr,&@$,&@1,&@1);}
-		 | boolean { $$ = $1;setLocation(nullptr,&@$,&@1,&@1); }
-		 | numeric
-			 | expr BPOW expr { $$ = new NBinaryOperator(*$1, $2, *$3); setLocation($$,&@$,&@1,&@3);}
-			 | expr BMUL expr { $$ = new NBinaryOperator(*$1, $2, *$3); setLocation($$,&@$,&@1,&@3);}
-			 | expr BDIV expr { $$ = new NBinaryOperator(*$1, $2, *$3); setLocation($$,&@$,&@1,&@3);}
-			 | expr BPLUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); setLocation($$,&@$,&@1,&@3);}
-			 | expr BMINUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); setLocation($$,&@$,&@1,&@3);}
- 		 | expr comparison expr { $$ = new NBinaryOperator(*$1, $2, *$3); setLocation($$,&@$,&@1,&@3);}
-		 | LPAREN expr RPAREN { $$ = $2; setLocation(nullptr,&@$,&@1,&@3);}
-		 | block { $$ = $1; setLocation(nullptr,&@$,&@1,&@1);}
-		 ;
-	
-	call_args : /*blank*/  { $$ = new NExpressionList(ExpressionList()); setLocation(nullptr,&@$);}
-			  | expr { $$ = new NExpressionList(ExpressionList()); $$->list.push_back($1); setLocation($$,&@$,&@1,&@1);}
-			  | call_args COMMA expr  { $1->list.push_back($3); setLocation(nullptr,&@$,&@1,&@3);}
-			  ;
 
 	comparison : BCEQ | BCNE | BCLT | BCLE | BCGT | BCGE;
 

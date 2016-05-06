@@ -71,7 +71,7 @@ namespace LIL {
 		UV = 12,// UNIQUE|VOLATILE
 		CUV = 13,// CONST|UNIQUE|VOLATILE
 		TUV = 14,// TEMP|UNIQUE|VOLATILE
-		CTUV = 14,// CONST|TEMP|UNIQUE|VOLATILE
+		CTUV = 15,// CONST|TEMP|UNIQUE|VOLATILE
 	};
 
 	inline qualifier& operator|=(qualifier& q1, qualifier& q2) {
