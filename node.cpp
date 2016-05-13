@@ -1,82 +1,25 @@
 #include "node.hpp"
 namespace LIL {
-	LValpT NBool::codeGen(CodeGenC& context)
+	NIdentifier::NIdentifier(std::string ident):ident(ident)
+	{}
+
+	NIdentifierList::NIdentifierList(std::vector<std::string> idents):idents(idents)
+	{}
+
+	NIdentifierList::NIdentifierList(std::string ident) : idents({ ident })
+	{}
+
+	NUsing::NUsing(std::vector<std::string> idents):idents(idents)
+	{}
+
+	NUsing::NUsing(NIdentifierList idents) : idents(idents.idents)
+	{}
+
+	NBlock::NBlock(Node* expr)
 	{
-		return nullptr;
+		exprs.push_back(expr);
 	}
 
-	LValpT NInteger::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NDouble::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NIdentifier::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NMethodCall::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NBinaryOperator::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NAssignment::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NBlock::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NExpressionList::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NReturn::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NIfBlock::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NWhileBlock::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NVariableDefinition::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NVariableList::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NExternDeclaration::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
-
-	LValpT NFunctionDeclaration::codeGen(CodeGenC& context)
-	{
-		return nullptr;
-	}
+	NBlock::NBlock()
+	{ }
 }

@@ -106,15 +106,13 @@ extern int yydebug;
 typedef union YYSTYPE
 {
 /* Line 2058 of yacc.c  */
-#line 56 "parser.y"
+#line 58 "parser.y"
 
 	LIL::Node *node;
 	LIL::NBlock *block;
 	LIL::Node *expr;
 	LIL::NIdentifier *ident;
-	LIL::NVariableDeclaration *decl;
-	LIL::NVariableList *varvec;
-	LIL::NExpressionList *exprvec;
+	LIL::NIdentifierList *identvec;
 	std::string *lit;
 	std::string *keyword;
 	int32_t wchar;
@@ -123,7 +121,7 @@ typedef union YYSTYPE
 
 
 /* Line 2058 of yacc.c  */
-#line 127 "parser.hpp"
+#line 125 "parser.hpp"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

@@ -10,6 +10,8 @@ extern int yylineno;
 extern int charno;
 extern size_t yyleng;
 extern FILE *yyin;
+extern bool term[2];
+#define CHK if(!term[1]){printf("\nNeed new line or semicolon \n");}
 void yyerror(const char *msg){
 	std::cout<<yylineno<<":"<<(charno-yyleng)<<": error: "<<msg<<std::endl;
 	if(yyin != nullptr){
@@ -58,9 +60,7 @@ void setLocation(Node *node,YYLTYPE *loc){
 	LIL::NBlock *block;
 	LIL::Node *expr;
 	LIL::NIdentifier *ident;
-	LIL::NVariableDeclaration *decl;
-	LIL::NVariableList *varvec;
-	LIL::NExpressionList *exprvec;
+	LIL::NIdentifierList *identvec;
 	std::string *lit;
 	std::string *keyword;
 	int32_t wchar;
@@ -83,12 +83,13 @@ void setLocation(Node *node,YYLTYPE *loc){
 	   we call an ident (defined by union type ident) we are really
 	   calling an (NIdentifier*). It makes the compiler happy.*/
 
-	%type <ident> 
-	%type <expr> 
-	%type <varvec> 
-	%type <decl> 
-	%type <exprvec> 
-	%type <block> 
+	%type <ident> ident
+	%type <identvec> names
+	%type <expr> using expr
+	//%type <exprvec> 
+	//%type <varvec> 
+	//%type <decl> 
+	%type <block> exprs program
 	%type <token> comparison
 
 	// Operator precedence for mathematical operators 
@@ -103,7 +104,23 @@ void setLocation(Node *node,YYLTYPE *loc){
 	%start program
 
 %%
+	program : exprs { programBlock = $1;setLocation(programBlock,&@$); }
+			;
+			
+	exprs   : /**/ { $$ = new NBlock();setLocation($$,&@$); }
+			| expr { CHK;$$ = new NBlock($<expr>1);setLocation($$,&@$,&@1,&@1); }
+	    	| exprs expr { CHK;$1->exprs.push_back($<expr>2);setLocation(nullptr,&@$,&@1,&@2); }
+	        ;
 
+	expr    : using ;
+
+	using   : KUSING names { $$ = new NUsing(*$2); delete $2; setLocation($$,&@$,&@1,&@2); };
+
+	names   : ident { $$ = new NIdentifierList($1->ident); delete $1; setLocation($$,&@$,&@1,&@1); }
+			| names ODCL ident { $$->idents.push_back($3->ident); delete $3; setLocation($$,&@$,&@1,&@3); }
+
+	ident   : IDENTIFIER { $$ = new NIdentifier(*$1); delete $1; setLocation($$,&@$,&@1,&@1); }
+			;
 
 
 	comparison : BCEQ | BCNE | BCLT | BCLE | BCGT | BCGE;

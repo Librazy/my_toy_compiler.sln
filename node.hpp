@@ -21,10 +21,9 @@ typedef struct YYLTYPE
 
 namespace LIL {
 	class Node;
-	class NVariableDeclaration;
-	typedef std::vector<Node*> ExpressionList;
-	typedef std::vector<NVariableDeclaration*> VariableList;
+
 	typedef LValue* LValpT;
+	typedef std::vector<Node*> LNodepvT;
 
 	class Node {
 	public:
@@ -37,5 +36,30 @@ namespace LIL {
 		virtual LValpT codeGen(CodeGenC& context) { return nullptr; }
 	};
 
-
+	class NIdentifier :public Node
+	{
+	public:
+		explicit NIdentifier(std::string ident);
+		std::string ident;
+	};
+	class NIdentifierList :public Node
+	{
+	public:
+		explicit NIdentifierList(std::vector<std::string> idents);
+		explicit NIdentifierList(std::string ident);
+		std::vector<std::string> idents;
+	};
+	class NUsing :public Node
+	{
+	public:
+		explicit NUsing(std::vector<std::string> idents);
+		explicit NUsing(NIdentifierList idents);
+		std::vector<std::string> idents;
+	};
+	class NBlock : public Node {
+	public:
+		LNodepvT exprs;
+		NBlock(Node* expr);
+		NBlock();
+	};
 }
