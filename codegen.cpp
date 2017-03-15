@@ -16,12 +16,11 @@ void CodeGenContext::generateCode(NBlock& root)
 	BasicBlock* bblock = BasicBlock::Create(TheContext, "entry", mainFunction, nullptr);
 
 	/* Push a new variable/block context */
-	pushBlock(bblock,"main");
+	pushBlock(bblock, "main");
 	root.codeGen(*this); /* emit bytecode for the toplevel block */
-	if(!getCurrentReturnValue()) {
+	if (!getCurrentReturnValue()) {
 		ReturnInst::Create(TheContext, ConstantInt::get(Type::getInt64Ty(TheContext), 0), currentBlock());
-	}
-	else {
+	} else {
 		assert(getCurrentReturnValue()->getType()==Type::getInt64Ty(TheContext)&&"Main must return Int64!");
 		ReturnInst::Create(TheContext, getCurrentReturnValue(), currentBlock());
 	}
@@ -34,7 +33,7 @@ void CodeGenContext::generateCode(NBlock& root)
 	PassManager<Module> pm;
 	AnalysisManager<Module>* am = new AnalysisManager<Module>;
 	pm.addPass(PrintModulePass(outs()));
-	pm.run(*module,*am);
+	pm.run(*module, *am);
 }
 
 /* Executes the AST by running the main function */
@@ -54,11 +53,9 @@ static Type* typeOf(const NIdentifier& type, CodeGenContext& context)
 {
 	if (type.name.compare("int") == 0) {
 		return Type::getInt64Ty(context.TheContext);
-	}
-	else if (type.name.compare("double") == 0) {
+	} else if (type.name.compare("double") == 0) {
 		return Type::getDoubleTy(context.TheContext);
-	}
-	else if (type.name.compare("bool") == 0) {
+	} else if (type.name.compare("bool") == 0) {
 		return Type::getInt1Ty(context.TheContext);
 	}
 	return Type::getVoidTy(context.TheContext);
@@ -66,7 +63,7 @@ static Type* typeOf(const NIdentifier& type, CodeGenContext& context)
 
 static inline Value* cast(Value* op, Type* dest, CodeGenContext& context)
 {
-	if (op->getType() == Type::getInt64Ty(context.TheContext) &&dest == Type::getDoubleTy(context.TheContext)) {
+	if (op->getType() == Type::getInt64Ty(context.TheContext) && dest == Type::getDoubleTy(context.TheContext)) {
 		//Int64 -> Double
 		return new SIToFPInst(op, dest, "", context.currentBlock());
 	} else if (op->getType() == Type::getDoubleTy(context.TheContext) && dest == Type::getInt64Ty(context.TheContext)) {
@@ -74,12 +71,12 @@ static inline Value* cast(Value* op, Type* dest, CodeGenContext& context)
 		return new FPToSIInst(op, dest, "", context.currentBlock());
 	} else if (op->getType() == Type::getInt64Ty(context.TheContext) && dest == Type::getInt1Ty(context.TheContext)) {
 		//Int64 -> Boolean
-		return ICmpInst::Create(Instruction::ICmp, ICmpInst::Predicate::ICMP_NE, op, ConstantInt::get(Type::getInt64Ty(context.TheContext),0),
-			"", context.currentBlock());
+		return ICmpInst::Create(Instruction::ICmp, ICmpInst::Predicate::ICMP_NE, op, ConstantInt::get(Type::getInt64Ty(context.TheContext), 0),
+		                        "", context.currentBlock());
 	} else if (op->getType() == Type::getDoubleTy(context.TheContext) && dest == Type::getInt1Ty(context.TheContext)) {
 		//Double -> Boolean
 		return FCmpInst::Create(Instruction::FCmp, ICmpInst::Predicate::FCMP_ONE, op, ConstantFP::get(Type::getDoubleTy(context.TheContext), 0.0),
-			"", context.currentBlock());
+		                        "", context.currentBlock());
 	}
 	llvm_unreachable("Invaild cast!");
 }
@@ -89,13 +86,13 @@ static inline Value* castToIfNeed(Value* op, Type* dest, CodeGenContext& context
 	Value* res;
 	if (op->getType() != dest) {
 		res = cast(op, dest, context);
-	}
-	else res = op;
+	} else res = op;
 	return res;
 }
-static inline Value* ctinDouble(Value* op,CodeGenContext& context)
+
+static inline Value* ctinDouble(Value* op, CodeGenContext& context)
 {
-	return castToIfNeed(op, Type::getDoubleTy(context.TheContext),context);
+	return castToIfNeed(op, Type::getDoubleTy(context.TheContext), context);
 }
 
 static inline Value* ctinInt64(Value* op, CodeGenContext& context)
@@ -107,6 +104,7 @@ static inline Value* ctinBoolean(Value* op, CodeGenContext& context)
 {
 	return castToIfNeed(op, Type::getInt1Ty(context.TheContext), context);
 }
+
 /* -- Code Generation -- */
 
 Value* NBool::codeGen(CodeGenContext& context)
@@ -165,7 +163,7 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 	ICmpInst::Predicate pred;
 	Value* lhs_v = lhs.codeGen(context);
 	Value* rhs_v = rhs.codeGen(context);
-	std::clog << "The operands' types are " << lhs_v->getType()<< " and " << rhs_v->getType() << endl;
+	std::clog << "The operands' types are " << lhs_v->getType() << " and " << rhs_v->getType() << endl;
 	if (lhs_v->getType() == Type::getInt64Ty(context.TheContext) && rhs_v->getType() == Type::getInt64Ty(context.TheContext)) {
 		cmpinstr = Instruction::ICmp;
 		switch (op) {
@@ -215,23 +213,23 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 
 			Function* fun = context.globalFun.at("pow");
 			CallInst* res_D = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
-			return ctinInt64(res_D,context);
+			return ctinInt64(res_D, context);
 		}
 
 		return nullptr;
 	math:
-		return BinaryOperator::Create(instr, lhs_v,rhs_v,
-			"", context.currentBlock());
+		return BinaryOperator::Create(instr, lhs_v, rhs_v,
+		                              "", context.currentBlock());
 	cmp:
 		return ICmpInst::Create(cmpinstr, pred, lhs_v, rhs_v,
-			"", context.currentBlock());
+		                        "", context.currentBlock());
 
-	}else {
+	} else {
 		Value* lhs_v_d = ctinDouble(lhs_v, context);
 		Value* rhs_v_d = ctinDouble(rhs_v, context);
 		cmpinstr = Instruction::FCmp;
 		switch (op) {
-		case TPLUS: 
+		case TPLUS:
 			instr = Instruction::FAdd;
 			goto mathd;
 		case TMINUS:
@@ -279,12 +277,11 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 		}
 	mathd:
 		return BinaryOperator::Create(instr, lhs_v_d,
-			rhs_v_d, "", context.currentBlock());
+		                              rhs_v_d, "", context.currentBlock());
 	cmpd:
 		return FCmpInst::Create(cmpinstr, pred, lhs_v_d, rhs_v_d,
-			"", context.currentBlock());
+		                        "", context.currentBlock());
 	}
-
 }
 
 Value* NAssignment::codeGen(CodeGenContext& context)
@@ -332,13 +329,13 @@ Value* NIfBlock::codeGen(CodeGenContext& context)
 	FunctionType* ftype = FunctionType::get(Type::getVoidTy(context.TheContext), makeArrayRef(argTypes), false);
 	Function* fake = Function::Create(ftype, GlobalValue::InternalLinkage, "", context.module);
 	Function* iff = context.currentBlock()->getParent();
-	BasicBlock* bblock  = BasicBlock::Create(context.TheContext, "if_"+context.trace(), iff);
-	BasicBlock* ThenBB  = BasicBlock::Create(context.TheContext, "then_"+context.trace(),  iff);
-	BasicBlock* ElseBB  = BasicBlock::Create(context.TheContext, "else_"+context.trace(),  iff);
-	BasicBlock* MergeBB = BasicBlock::Create(context.TheContext, "merge_"+context.trace(), iff);
+	BasicBlock* bblock = BasicBlock::Create(context.TheContext, "if_" + context.trace(), iff);
+	BasicBlock* ThenBB = BasicBlock::Create(context.TheContext, "then_" + context.trace(), iff);
+	BasicBlock* ElseBB = BasicBlock::Create(context.TheContext, "else_" + context.trace(), iff);
+	BasicBlock* MergeBB = BasicBlock::Create(context.TheContext, "merge_" + context.trace(), iff);
 	BranchInst::Create(bblock, context.currentBlock());
 
-	context.pushBlock(bblock,"if",true);
+	context.pushBlock(bblock, "if", true);
 	Value* vcond = ctinBoolean(cond.codeGen(context), context);
 	Type *thenType, *elseType;
 	BasicBlock* tmp = BasicBlock::Create(context.TheContext, "tmp_", fake);
@@ -351,15 +348,15 @@ Value* NIfBlock::codeGen(CodeGenContext& context)
 	tmp->eraseFromParent();
 	fake->eraseFromParent();
 	std::clog << "FINISH type infer" << endl << endl;
-	
+
 	assert(thenType == elseType && "elseblock and thenblock must have the same type!");
 	AllocaInst* alloc = new AllocaInst(elseType, "ifv", context.currentBlock());
-	Value *CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond , ConstantInt::get(Type::getInt1Ty(context.TheContext), 0), "cond");
+	Value* CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond, ConstantInt::get(Type::getInt1Ty(context.TheContext), 0), "cond");
 	BranchInst::Create(ThenBB, ElseBB, CondInst, context.currentBlock());
 
 	Value *thenValue, *elseValue;
 	std::clog << "Creating Then" << endl;
-	context.pushBlock(ThenBB,"then",true);
+	context.pushBlock(ThenBB, "then", true);
 	thenValue = thenblock.codeGen(context);
 	StoreInst* thenStore = new StoreInst(thenValue, alloc, false, context.currentBlock());
 	context.setCurrentReturnValue(thenStore);
@@ -369,7 +366,7 @@ Value* NIfBlock::codeGen(CodeGenContext& context)
 
 
 	std::clog << "Creating Else" << endl;
-	context.pushBlock(ElseBB,"else",true);
+	context.pushBlock(ElseBB, "else", true);
 	elseValue = elseblock.codeGen(context);
 	StoreInst* elseStore = new StoreInst(elseValue, alloc, false, context.currentBlock());
 	context.setCurrentReturnValue(elseStore);
@@ -380,12 +377,12 @@ Value* NIfBlock::codeGen(CodeGenContext& context)
 	context.popBlock();
 
 	context.pushBlock(MergeBB, "join", true);
-	LoadInst* rtv=new LoadInst(alloc, "", false, context.currentBlock());
+	LoadInst* rtv = new LoadInst(alloc, "", false, context.currentBlock());
 	return rtv;
 }
+
 Value* NWhileBlock::codeGen(CodeGenContext& context)
 {
-
 	Function* iff = context.currentBlock()->getParent();
 	BasicBlock* bblock = BasicBlock::Create(context.TheContext, "while_" + context.trace(), iff);
 	BasicBlock* ThenBB = BasicBlock::Create(context.TheContext, "do_" + context.trace(), iff);
@@ -393,11 +390,11 @@ Value* NWhileBlock::codeGen(CodeGenContext& context)
 	BranchInst::Create(bblock, context.currentBlock());
 
 	context.pushBlock(bblock, "while", true);
-	Value* condv= cond.codeGen(context);
+	Value* condv = cond.codeGen(context);
 	Value* vcond = ctinBoolean(condv, context);
 
 
-	Value *CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond, ConstantInt::get(Type::getInt1Ty(context.TheContext), 0), "cond");
+	Value* CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond, ConstantInt::get(Type::getInt1Ty(context.TheContext), 0), "cond");
 	BranchInst::Create(ThenBB, MergeBB, CondInst, context.currentBlock());
 
 	std::clog << "Creating While" << endl;
@@ -412,10 +409,11 @@ Value* NWhileBlock::codeGen(CodeGenContext& context)
 	context.pushBlock(MergeBB, "join", true);
 	return condv;
 }
+
 Value* NVariableDefinition::codeGen(CodeGenContext& context)
 {
 	std::clog << "Creating variable declaration " << type.name << " " << id.name << endl;
-	AllocaInst* alloc = new AllocaInst(typeOf(type,context), id.name.c_str(), context.currentBlock());
+	AllocaInst* alloc = new AllocaInst(typeOf(type, context), id.name.c_str(), context.currentBlock());
 	context.locals()[id.name] = alloc;
 	if (assignmentExpr != nullptr) {
 		NAssignment assn(id, *assignmentExpr);
@@ -429,9 +427,9 @@ Value* NExternDeclaration::codeGen(CodeGenContext& context)
 	vector<Type*> argTypes;
 	VariableList::const_iterator it;
 	for (it = arguments.begin(); it != arguments.end(); ++it) {
-		argTypes.push_back(typeOf((**it).type,context));
+		argTypes.push_back(typeOf((**it).type, context));
 	}
-	FunctionType* ftype = FunctionType::get(typeOf(type,context), makeArrayRef(argTypes), false);
+	FunctionType* ftype = FunctionType::get(typeOf(type, context), makeArrayRef(argTypes), false);
 	Function* function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.module);
 	return function;
 }
@@ -442,21 +440,20 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 	vector<Type*> argTypes;
 	VariableList::const_iterator it;
 	for (it = arguments.begin(); it != arguments.end(); ++it) {
-		argTypes.push_back(typeOf((**it).type,context));
+		argTypes.push_back(typeOf((**it).type, context));
 	}
-	FunctionType* ftype = FunctionType::get(typeOf(type,context), makeArrayRef(argTypes), false);
+	FunctionType* ftype = FunctionType::get(typeOf(type, context), makeArrayRef(argTypes), false);
 	Function* function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.module);
 	std::clog << "Fn:Creating BasicBlocks:" << function << endl;
 	BasicBlock* bblock = BasicBlock::Create(context.TheContext, "entry", function, nullptr);
-	context.pushBlock(bblock,"fn_"+ id.name,false);
+	context.pushBlock(bblock, "fn_" + id.name, false);
 
 	Function::arg_iterator argsValues = function->arg_begin();
 	Value* argumentValue;
 	std::vector<Value*> storeInst;
 	for (it = arguments.begin(); it != arguments.end(); ++it) {
 		(**it).codeGen(context);
-
-		argumentValue = argsValues.getNodePtrUnchecked();
+		argumentValue = &(*argsValues++);
 		argumentValue->setName((*it)->id.name.c_str());
 		StoreInst* inst = new StoreInst(argumentValue, context.locals()[(*it)->id.name], false, bblock);
 		storeInst.push_back(inst);
@@ -468,4 +465,3 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 	context.popBlock();
 	return function;
 }
-
