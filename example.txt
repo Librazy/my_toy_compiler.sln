@@ -1,7 +1,43 @@
 fn do_math:int(a:int) {
-  var x:int = a * 5
-  return x + 3
+  var test:int = a - 1;
+    local do_math2:int(d:int) {
+      return test + d
+    }
+  var eq:int = a * 5
+  return do_math2(eq)
 }
+
+fn do_math3:int(a:int) {
+  var test:int = a - 1;
+  var t2:int = if {var x:int = do_math(2);x>2}
+	then x; else {x=x+10;x};
+	local do_math2:int(d:int) {
+		return test ^^ d + t2
+	}
+  var eq:int = a * 5
+  var f:int = do_math2(eq);
+  return {echo(f); f - t2}
+}
+
+echo(do_math(2))
+echo(do_math3(3))
+
+fn local_test:double() {
+  var test:int = 0;
+  echo(test)
+  local r:int(d:int) {
+    return {test = d;d}
+  }
+  r(3)
+  echo(test)
+  return 0.0
+}
+local_test()
+
+if !{if do_math(2) == 32779
+    then 1;
+    else 0;}
+then echo(32); else echo(64);
 
 echo(if {var x:int = 10;x>2}
 then x; else {x=x+10;11}
@@ -9,7 +45,7 @@ then x; else {x=x+10;11}
 
 
 echod(if 
-    do_math(20^^2)>=400
+    !do_math(2^^2)>=400
 {
     2.3^^5
 } else {

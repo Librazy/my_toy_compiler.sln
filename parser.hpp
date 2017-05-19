@@ -59,25 +59,27 @@ extern int yydebug;
      KWHILE = 268,
      KVAR = 269,
      KFN = 270,
-     TCEQ = 271,
-     TCNE = 272,
-     TCLT = 273,
-     TCLE = 274,
-     TCGT = 275,
-     TCGE = 276,
-     TEQUAL = 277,
-     TCL = 278,
-     TLPAREN = 279,
-     TRPAREN = 280,
-     TLBRACE = 281,
-     TRBRACE = 282,
-     TCOMMA = 283,
-     TDOT = 284,
-     TPLUS = 285,
-     TMINUS = 286,
-     TMUL = 287,
-     TDIV = 288,
-     TPOW = 289
+     KLKFN = 271,
+     TCEQ = 272,
+     TCNE = 273,
+     TCLT = 274,
+     TCLE = 275,
+     TCGT = 276,
+     TCGE = 277,
+     TEQUAL = 278,
+     TCL = 279,
+     TNOT = 280,
+     TLPAREN = 281,
+     TRPAREN = 282,
+     TLBRACE = 283,
+     TRBRACE = 284,
+     TCOMMA = 285,
+     TDOT = 286,
+     TPLUS = 287,
+     TMINUS = 288,
+     TMUL = 289,
+     TDIV = 290,
+     TPOW = 291
    };
 #endif
 
@@ -86,7 +88,7 @@ extern int yydebug;
 typedef union YYSTYPE
 {
 /* Line 2058 of yacc.c  */
-#line 13 "parser.y"
+#line 14 "parser.y"
 
 	Node *node;
 	NBlock *block;
@@ -103,7 +105,7 @@ typedef union YYSTYPE
 
 
 /* Line 2058 of yacc.c  */
-#line 107 "parser.hpp"
+#line 109 "parser.hpp"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

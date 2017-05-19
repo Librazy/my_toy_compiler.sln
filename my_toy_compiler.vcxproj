@@ -22,7 +22,7 @@
     <ProjectGuid>{6104CE26-8221-4E47-A08D-493802BDDF7D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>my_toy_compiler</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -118,7 +118,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\LLVM-DBG\include;</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4820;4625;4626;4365;5027;4514;4710;4265;4061;4668;4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4820;4625;4626;4365;5027;4514;4710;4265;4061;4668;4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <SDLCheck>false</SDLCheck>
     </ClCompile>
     <Link>
@@ -156,6 +156,7 @@
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>E:\LLVM-Bin\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;4820;4625;4626;4365;5027;4514;4710;4265;4061;4668;4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -1,6 +1,7 @@
 #include <iostream>
 #include "codegen.h"
 #include "node.h"
+#include <llvm/Support/TargetSelect.h>
 
 using namespace std;
 
@@ -9,18 +10,17 @@ extern NBlock* programBlock;
 
 void createCoreFunctions(CodeGenContext& context);
 
-int main(int argc, char** argv)
+int main()
 {
 	yyparse();
 	clog << programBlock << endl;
-	// see http://comments.gmane.org/gmane.comp.compilers.llvm.devel/33877
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 	InitializeNativeTargetAsmParser();
 	CodeGenContext context;
 	createCoreFunctions(context);
 	context.generateCode(*programBlock);
-	GenericValue val = context.runCode();
+	auto val = context.runCode();
 	clog << val.IntVal.getSExtValue() << endl;
 	return 0;
 }

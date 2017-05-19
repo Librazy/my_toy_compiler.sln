@@ -1,4 +1,4 @@
-#include <iostream>
+#pragma once
 #include <vector>
 #include <llvm/IR/Value.h>
 
@@ -11,11 +11,13 @@ typedef std::vector<NStatement*> StatementList;
 typedef std::vector<NExpression*> ExpressionList;
 typedef std::vector<NVariableDefinition*> VariableList;
 
+using namespace llvm;
+
 class Node
 {
 public:
 	virtual ~Node() {}
-	virtual llvm::Value* codeGen(CodeGenContext& context) { return nullptr; }
+	virtual Value* codeGen(CodeGenContext& context) { return nullptr; }
 };
 
 class NExpression : public Node
@@ -24,36 +26,47 @@ class NExpression : public Node
 class NStatement : public Node
 {};
 
-class NBool : public NExpression
+class NValue : public NExpression
+{
+protected:
+	NValue(){}
+public:
+	Value* codeGen(CodeGenContext& context) override = 0;
+	virtual int64_t getValue() = 0;
+};
+
+class NBool : public NValue
 {
 public:
 	bool value;
-	NBool(bool value) : value(value) { }
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	explicit NBool(bool value) : value(value) { }
+	Value* codeGen(CodeGenContext& context) override;
+	int64_t getValue() override;
 };
 
-class NInteger : public NExpression
+class NInteger : public NValue
 {
 public:
-	long long value;
-	NInteger(long long value) : value(value) { }
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	int64_t value;
+	explicit NInteger(int64_t value) : value(value) { }
+	Value* codeGen(CodeGenContext& context) override;
+	int64_t getValue() override;
 };
 
 class NDouble : public NExpression
 {
 public:
 	double value;
-	NDouble(double value) : value(value) { }
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	explicit NDouble(double value) : value(value) { }
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NIdentifier : public NExpression
 {
 public:
 	std::string name;
-	NIdentifier(const std::string& name) : name(name) { }
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	explicit NIdentifier(const std::string& name) : name(name) { }
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NMethodCall : public NExpression
@@ -66,7 +79,7 @@ public:
 		id(id), arguments(arguments) { }
 
 	NMethodCall(const NIdentifier& id) : id(id) { }
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NBinaryOperator : public NExpression
@@ -79,7 +92,7 @@ public:
 	NBinaryOperator(NExpression& lhs, int op, NExpression& rhs) :
 		op(op), lhs(lhs), rhs(rhs) { }
 
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NAssignment : public NExpression
@@ -91,7 +104,7 @@ public:
 	NAssignment(NIdentifier& lhs, NExpression& rhs) :
 		lhs(lhs), rhs(rhs) { }
 
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NBlock : public NExpression
@@ -99,7 +112,7 @@ class NBlock : public NExpression
 public:
 	StatementList statements;
 	NBlock() { }
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NExpressionStatement : public NStatement
@@ -110,7 +123,7 @@ public:
 	NExpressionStatement(NExpression& expression) :
 		expression(expression) { }
 
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NReturnStatement : public NStatement
@@ -121,7 +134,7 @@ public:
 	NReturnStatement(NExpression& expression) :
 		expression(expression) { }
 
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NIfBlock : public NExpression
@@ -133,7 +146,7 @@ public:
 
 	NIfBlock(NExpression& cond, NExpression& thenblock, NExpression& elseblock) :
 		cond(cond), thenblock(thenblock), elseblock(elseblock) { };
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NWhileBlock : public NStatement
@@ -144,7 +157,7 @@ public:
 
 	NWhileBlock(NExpression& cond, NBlock& doblock) :
 		cond(cond), doblock(doblock) { };
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NVariableDefinition : public NStatement
@@ -160,7 +173,7 @@ public:
 	NVariableDefinition(const NIdentifier& type, NIdentifier& id, NExpression* assignmentExpr) :
 		type(type), id(id), assignmentExpr(assignmentExpr) { }
 
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NVariableDeclaration : public NStatement
@@ -184,20 +197,21 @@ public:
 	                   const VariableList& arguments) :
 		type(type), id(id), arguments(arguments) {}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };
 
 class NFunctionDeclaration : public NStatement
 {
 public:
+	const bool local;
 	const NIdentifier& type;
 	const NIdentifier& id;
 	VariableList arguments;
 	NBlock& block;
 
 	NFunctionDeclaration(const NIdentifier& type, const NIdentifier& id,
-	                     const VariableList& arguments, NBlock& block) :
-		type(type), id(id), arguments(arguments), block(block) { }
+	                     const VariableList& arguments, NBlock& block, bool local) :
+		local(local), type(type), id(id), arguments(arguments), block(block) { }
 
-	virtual llvm::Value* codeGen(CodeGenContext& context) override;
+	Value* codeGen(CodeGenContext& context) override;
 };

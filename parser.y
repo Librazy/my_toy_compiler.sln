@@ -1,7 +1,8 @@
 %{
 	#include "node.h"
-        #include <cstdio>
-        #include <cstdlib>
+	#include <cstdio>
+	#include <cstdlib>
+	#include <iostream>
 	NBlock *programBlock; /* the top level root node of our final AST */
 
 	extern int yylex();
@@ -30,8 +31,8 @@
    they represent.
  */
 %token <string> TIDENTIFIER TINTEGER TDOUBLE
-%token <keyword> KIF KTHEN KELSE KRETURN KEXTERN KBFALSE KBTRUE KWHILE KVAR KFN
-%token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL TCL
+%token <keyword> KIF KTHEN KELSE KRETURN KEXTERN KBFALSE KBTRUE KWHILE KVAR KFN KLKFN
+%token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL TCL TNOT
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV TPOW
 
@@ -91,7 +92,9 @@ extern_decl : KEXTERN ident ident TLPAREN func_decl_args TRPAREN
             ;
 
 func_decl : KFN decl TLPAREN func_decl_args TRPAREN block 
-			{ $$ = new NFunctionDeclaration($2->type, $2->id, *$4, *$6); delete $4; }
+			{ $$ = new NFunctionDeclaration($2->type, $2->id, *$4, *$6, false); delete $4; }
+		  | KLKFN decl TLPAREN func_decl_args TRPAREN block 
+			{ $$ = new NFunctionDeclaration($2->type, $2->id, *$4, *$6, true); delete $4; }
 		  ;
 	
 func_decl_args : /*blank*/  { $$ = new VariableList(); }
@@ -127,6 +130,7 @@ expr : ident TEQUAL expr { $$ = new NAssignment(*$<ident>1, *$3); }
          | expr TPLUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
          | expr TMINUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
  	 | expr comparison expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
+ 	 | TNOT expr { $$ = new NBinaryOperator(*$2, $1, *new NBool(true)); }
      | TLPAREN expr TRPAREN { $$ = $2; }
 	 | block { $$ = $1; }
 	 ;
