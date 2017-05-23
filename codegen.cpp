@@ -587,19 +587,12 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 	if (local && context.extra[context.ftrace(1) + "__fn_" + id.name].size() != 0) {
 		context.dclog << "Recreating local function " << id.name << std::endl;
 		context.dclog << debug_stream::indent(2, +1);
-		bblock->eraseFromParent();
-		function->removeFromParent();
-		//for(auto func:def[context.ftrace()]) {
-		//	context.dclog << debug_stream::verbose << "Erasing " << func.first << std::endl;
-		//	func.second->eraseFromParent();
-		//}
-		//def[context.ftrace()].clear();
-		delete function;
-		context.dclog << debug_stream::info;
-		context.dclog << debug_stream::indent(2, -1);
 		context.popBlockUntil(bblock);
+		function->eraseFromParent();
 		context.popBlock();
 		context.funcBlocks.pop_back();
+		context.dclog << debug_stream::info;
+		context.dclog << debug_stream::indent(2, -1);
 		for (auto ex: context.extra[context.ftrace() + "__fn_" + id.name]) {
 			argTypes.push_back(context.find_locals(ex)->getType());
 		}

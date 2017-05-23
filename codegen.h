@@ -138,7 +138,7 @@ public:
 	void popBlock()
 	{
 		auto top = blocks.back();
-		dclog << debug_stream::verbose << "poping block " + top->name + ", transpent:" << top->isTranspent << ", addr:" << top->block << std::endl;
+		dclog << debug_stream::verbose << "poping block " + top->name << ", " + top->block->getName().str() << ", transpent:" << top->isTranspent << ", addr:" << top->block << std::endl;
 		blocks.pop_back();
 		delete top;
 	}
@@ -149,7 +149,7 @@ public:
 		dclog << debug_stream::indent(2, +1);
 		while (blocks.back()->block != b) {
 			auto top = blocks.back();
-			dclog << debug_stream::verbose << "poping block " + top->name + ", transpent:" << top->isTranspent << ", addr:" << top->block << std::endl;
+			dclog << debug_stream::verbose << "poping block " + top->name << ", " + top->block->getName().str() << ", transpent:" << top->isTranspent << ", addr:" << top->block << std::endl;
 			blocks.pop_back();
 			delete top;
 		}

@@ -16,7 +16,7 @@ fn do_math3:int(a:int) {
   }
   var eq:int = a * 5
   var f:int = do_math2(eq);
-  return {echo(f); f - t2}
+  return {echo(f); f / t2}
 }
 
 echo(do_math(2))
@@ -27,29 +27,29 @@ fn local_test:double() {
   echo(test)
   local r:int(d:int) {
     var v:int = 2;
-    local t:int(e:int) {
+    local t:int(e1:int) {
       local exp:int(a:int, b:int){
-        a^^b
+        a ^^ b
       }
-      test = exp(e, v);
+      test = exp(e1, v);
       return test + 1;
     }
     local s:int(e:int) {
-      test = e;
-      return test + 1;
+      test = if test > 2 then test / e else test;
+      return test;
     }
+    echo(t(5));
     echo(s(5));
-	echo(t(5));
     return 0;
   }
   r(3)
   echo(test)
-  0.0
+  3.0 / 2
 }
-local_test()
+echod(local_test())
 
-fn rec_test:int(d:int, c:int){
-	if d > 1 then { rec_test(d-1, c*d) } else c;
+fn rec_test:int(d:int){
+  if d <= 2 then 1 else rec_test(d - 2) + rec_test(d - 1)
 }
 
 if !{if do_math(2) == 32779
@@ -69,4 +69,11 @@ echod(if
     10^^2.2
 })
 
-return rec_test(7, 4)
+var ftw:int = 3;
+var wtf:int = 32;
+while(wtf > 2){
+  wtf = wtf / ftw;
+  echo(wtf)
+}
+
+return rec_test(20)
