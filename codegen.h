@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include "debug_stream.hpp"
 #include <string>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -21,11 +22,11 @@ class NBlock;
 class CodeGenBlock
 {
 public:
-	BasicBlock* block;
-	Value* returnValue;
-	std::string name;
+	BasicBlock* block = nullptr;
+	Value* returnValue = nullptr;
 	bool isTranspent = false;
 	bool isFunction = false;
+	std::string name;
 	std::map<std::string, Value*> locals;
 };
 
@@ -35,19 +36,20 @@ class CodeGenContext
 	Function* mainFunction;
 public:
 	raw_os_ostream llclog{std::clog};
+	debug_stream dclog;
 	Module* module;
 	LLVMContext llvmContext;
 	std::map<std::string, Function*> globalFun;
 	std::vector<std::string> funcBlocks;
 	std::map<std::string, std::vector<std::string>> extra;
 
-	CodeGenContext(): mainFunction(nullptr), llvmContext()
+	CodeGenContext(): mainFunction(nullptr), dclog("Debug", debug_stream::verbose, std::clog), llvmContext()
 	{
 		module = new Module("main", llvmContext);
-		std::vector<Type *> powf_a_t;
-		powf_a_t.push_back(Type::getDoubleTy(llvmContext));
-		powf_a_t.push_back(Type::getDoubleTy(llvmContext));
-		registeGlobalIntrinsic(Intrinsic::pow, "llvm.pow.f64", "pow", powf_a_t);
+		std::vector<Type *> powfArgumentTypes;
+		powfArgumentTypes.push_back(Type::getDoubleTy(llvmContext));
+		powfArgumentTypes.push_back(Type::getDoubleTy(llvmContext));
+		registeGlobalIntrinsic(Intrinsic::pow, "llvm.pow.f64", "pow", powfArgumentTypes);
 	}
 
 	void registeGlobalIntrinsic(Intrinsic::ID intid, std::string name, std::string id, ArrayRef<Type*> Tys = None)
@@ -58,7 +60,7 @@ public:
 	}
 
 	void generateCode(NBlock& root);
-	GenericValue runCode() const;
+	GenericValue runCode();
 
 	std::map<std::string, Value*>& locals() const
 	{
@@ -68,32 +70,37 @@ public:
 	Value* find_locals(std::string const& s)
 	{
 		auto i = blocks.end();
-		auto througthFun = false;
-		std::clog << "start finding " + s << std::endl;
+		auto througthFun = 0;
+		dclog << debug_stream::verbose << "start finding " + s << std::endl;
+		dclog << debug_stream::indent(2, +1);
 		do {
 			if (i != blocks.begin())--i;
-			std::clog << "    finding local " + s + " in bb " + (*i)->name + " " << &(**i) << std::endl;
-			std::clog << "      " << (i != blocks.begin()) << " " << ((*i)->isTranspent) << std::endl;
+			dclog << "finding " + s + " in block " << (*i)->name << ", transpent " << (*i)->isTranspent << ", addr " << *i << std::endl;
 			if ((*i)->locals.find(s) != (*i)->locals.end()) {
 				if (througthFun) {
-					auto& ex = extra[ftrace(1) + "__" + funcBlocks.back()];
-					if (std::find(ex.begin(), ex.end(), s) == ex.end())
-						ex.push_back(s);
+					auto level = througthFun + 1;
+					while (--level) {
+						auto& ex = extra[ftrace(level) + "__" + funcBlocks.back()];
+						if (std::find(ex.begin(), ex.end(), s) == ex.end()) {
+							dclog << "marking " + s + " as extra in " << ftrace(level) + "__" + funcBlocks.back() << std::endl;
+							ex.push_back(s);
+						}
+					}
 				}
-				std::clog << "    found local " << (*i)->locals[s] << " for " << s << std::endl;
-				(*i)->locals[s]->getType()->print(llclog);
-				(llclog << "\n").flush();
+				(dclog << "found " << s << " at " << (*i)->locals[s] << " in block " << (*i)->name << ", type ").flush();
+				if (dclog.max_level >= debug_stream::verbose) {
+					(*i)->locals[s]->getType()->print(llclog);
+					(llclog << "\n").flush();
+				}
+				dclog << debug_stream::indent(2, -1);
 				return (*i)->locals[s];
 			}
 			if ((*i)->isFunction) {
-				if (!througthFun) {
-					througthFun = true;
-				} else {
-					std::cerr << "double local fun " + (*i)->name + " " + s << std::endl;
-					assert(false);
-				}
+				througthFun += 1;
 			}
 		} while ((*i)->isTranspent && i != blocks.begin());
+		dclog << debug_stream::indent(2, -1);
+		dclog << debug_stream::error << "can't find " << s;
 		return nullptr;
 	}
 
@@ -119,7 +126,7 @@ public:
 
 	void pushBlock(BasicBlock* block, std::string name, bool transpent = false, bool function = false)
 	{
-		std::clog << "    pushing bb " + name + " " << transpent << " " << block << std::endl;
+		dclog << debug_stream::verbose << "pushing basic block " + name + ", transpent:" << transpent << ", addr:" << block << std::endl;
 		blocks.push_back(new CodeGenBlock());
 		blocks.back()->returnValue = nullptr;
 		blocks.back()->block = block;
@@ -131,18 +138,23 @@ public:
 	void popBlock()
 	{
 		auto top = blocks.back();
-		std::clog << "    poping bb " + top->name + " " << top->isTranspent << " " << top->block << std::endl;
+		dclog << debug_stream::verbose << "poping block " + top->name + ", transpent:" << top->isTranspent << ", addr:" << top->block << std::endl;
 		blocks.pop_back();
 		delete top;
 	}
 
 	void popBlockUntil(BasicBlock* b)
 	{
+		dclog << debug_stream::verbose << "poping blocks..." << std::endl;
+		dclog << debug_stream::indent(2, +1);
 		while (blocks.back()->block != b) {
 			auto top = blocks.back();
+			dclog << debug_stream::verbose << "poping block " + top->name + ", transpent:" << top->isTranspent << ", addr:" << top->block << std::endl;
 			blocks.pop_back();
 			delete top;
 		}
+		dclog << debug_stream::indent(2, -1);
+		dclog << "until basic block " << b << std::endl;
 	}
 
 	void setCurrentReturnValue(Value* value) { blocks.back()->returnValue = value; }

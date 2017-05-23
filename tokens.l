@@ -54,6 +54,6 @@ bool term[2];
 "-"								return TOKEN(TMINUS);
 "*"								return TOKEN(TMUL);
 "/"								return TOKEN(TDIV);
-.								std::cerr<<"Unknown token!"<<std::endl; yyterminate();
+.								std::cerr<<"Unknown token!"<< std::string(yytext, yyleng) <<std::endl; yyterminate();
 
 %%

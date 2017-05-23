@@ -29,7 +29,7 @@ class NStatement : public Node
 class NValue : public NExpression
 {
 protected:
-	NValue(){}
+	NValue() {}
 public:
 	Value* codeGen(CodeGenContext& context) override = 0;
 	virtual int64_t getValue() = 0;
@@ -78,7 +78,7 @@ public:
 	NMethodCall(const NIdentifier& id, ExpressionList& arguments) :
 		id(id), arguments(arguments) { }
 
-	NMethodCall(const NIdentifier& id) : id(id) { }
+	explicit NMethodCall(const NIdentifier& id) : id(id) { }
 	Value* codeGen(CodeGenContext& context) override;
 };
 
@@ -120,7 +120,7 @@ class NExpressionStatement : public NStatement
 public:
 	NExpression& expression;
 
-	NExpressionStatement(NExpression& expression) :
+	explicit NExpressionStatement(NExpression& expression) :
 		expression(expression) { }
 
 	Value* codeGen(CodeGenContext& context) override;

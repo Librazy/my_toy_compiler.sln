@@ -3,11 +3,12 @@
 #include "parser.hpp"
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/Support/raw_os_ostream.h>
+#include <set>
 
 /* Compile the AST into a module */
 void CodeGenContext::generateCode(NBlock& root)
 {
-	std::clog << "Generating code...\n";
+	dclog << debug_stream::info << "Generating code..." << std::endl;
 
 	/* Create the top level interpreter function to call as entry */
 	std::vector<Type*> argTypes;
@@ -21,15 +22,19 @@ void CodeGenContext::generateCode(NBlock& root)
 	if (!getCurrentReturnValue()) {
 		ReturnInst::Create(llvmContext, ConstantInt::get(Type::getInt64Ty(llvmContext), 0), currentBlock());
 	} else {
-		assert(getCurrentReturnValue()->getType()==Type::getInt64Ty(llvmContext)&&"Main must return Int64!");
+		if (getCurrentReturnValue()->getType() != Type::getInt64Ty(llvmContext)) {
+			std::cerr << "Main must return Int64!" << std::endl;
+			exit(0);
+		}
 		ReturnInst::Create(llvmContext, getCurrentReturnValue(), currentBlock());
 	}
+	popBlockUntil(bblock);
 	popBlock();
 
 	/* Print the bytecode in a human-readable format 
 	   to see if our program compiled properly
 	 */
-	std::clog << "Code is generated.\n";
+	dclog << debug_stream::info << "Code is generated." << std::endl;
 	PassManager<Module> pm;
 	AnalysisManager<Module> am;
 	pm.addPass(PrintModulePass(outs()));
@@ -37,14 +42,14 @@ void CodeGenContext::generateCode(NBlock& root)
 }
 
 /* Executes the AST by running the main function */
-GenericValue CodeGenContext::runCode() const
+GenericValue CodeGenContext::runCode()
 {
-	std::clog << "Running code...\n";
-	auto ee = EngineBuilder(std::unique_ptr<Module>(module)).create();
+	dclog << debug_stream::info << "Running code..." << std::endl;
+	auto ee = EngineBuilder(std::unique_ptr<Module>(module)).setOptLevel(CodeGenOpt::Aggressive).create();
 	ee->finalizeObject();
 	std::vector<GenericValue> noargs;
 	auto v = ee->runFunction(mainFunction, noargs);
-	std::clog << "Code was run.\n";
+	dclog << debug_stream::info << "Code was run." << std::endl;
 	return v;
 }
 
@@ -110,12 +115,12 @@ static inline Value* castBoolean(Value* op, CodeGenContext& context)
 	return castToIfNeed(op, Type::getInt1Ty(context.llvmContext), context);
 }
 
-int64_t NBool::getValue() 
+int64_t NBool::getValue()
 {
 	return static_cast<int64_t>(value);
 }
 
-int64_t NInteger::getValue() 
+int64_t NInteger::getValue()
 {
 	return value;
 }
@@ -124,29 +129,29 @@ int64_t NInteger::getValue()
 
 Value* NBool::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating boolean: " << value << std::endl;
+	context.dclog << debug_stream::info << "Creating boolean: " << value << std::endl;
 	return ConstantInt::get(Type::getInt1Ty(context.llvmContext), value, true);
 }
 
 Value* NInteger::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating integer: " << value << std::endl;
+	context.dclog << debug_stream::info << "Creating integer: " << value << std::endl;
 	return ConstantInt::get(Type::getInt64Ty(context.llvmContext), value, true);
 }
 
 Value* NDouble::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating double: " << value << std::endl;
+	context.dclog << debug_stream::info << "Creating double: " << value << std::endl;
 	return ConstantFP::get(Type::getDoubleTy(context.llvmContext), value);
 }
 
 Value* NIdentifier::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating identifier reference: " << name << std::endl;
+	context.dclog << debug_stream::info << "Creating identifier reference: " << name << std::endl;
 	Value* loc;
 	if (!((loc = context.find_locals(name)))) {
 		std::cerr << "undeclared variable " << name << std::endl;
-		return nullptr;
+		exit(1);
 	}
 	return new LoadInst(loc, "", false, context.currentBlock());
 }
@@ -156,50 +161,64 @@ Value* NMethodCall::codeGen(CodeGenContext& context)
 	auto function = context.module->getFunction(id.name.c_str());
 	if (function == nullptr) {
 		auto loc = context.find_locals(context.ftrace() + "__fn_" + id.name);
-		if (loc)std::clog << "finding local function: " << id.name << loc->getType()->isFunctionTy() << std::endl;
+		if (loc) context.dclog << debug_stream::info << "Finding local function: " << id.name << std::endl;
 		if (loc) {
 			function = static_cast<Function*>(loc);
 		} else {
-			std::cerr << "no such function " << id.name << std::endl;
-			assert(false);
+			std::cerr << "No such function " << id.name << std::endl;
+			exit(1);
 		}
 	}
-	std::clog << "Creating method call: " << id.name << std::endl;
+	context.dclog << "Creating method call: " << id.name << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
 	std::vector<Value*> args;
 	auto i = 0;
 	for (ExpressionList::const_iterator it = arguments.begin(); it != arguments.end(); ++it) {
-		std::clog << "codeGen arg" << i << std::endl;
-		args.push_back((**it).codeGen(context));
-		std::clog << "arg" << i++ << "'s type: ";
-		args.back()->getType()->print(context.llclog);
-		(context.llclog << "\n").flush();
+		context.dclog << "Generating code for arg" << i << std::endl;
+		context.dclog << debug_stream::indent(2, +1);
+		args.push_back((*it)->codeGen(context));
+		context.dclog << debug_stream::indent(2, -1);
+		context.dclog << debug_stream::info << "arg" << i++ << "'s type: " << std::flush;
+		if (context.dclog.max_level >= debug_stream::info) {
+			args.back()->getType()->print(context.llclog);
+			(context.llclog << "\n").flush();
+		}
 	}
-	for (auto ex: context.extra[context.ftrace() + "__fn_" + id.name]) {
-		std::clog << "extra" << i << std::endl;
+	for (auto ex : context.extra[context.ftrace() + "__fn_" + id.name]) {
+		context.dclog << "Generating code for extra" << i << std::endl;
 		auto val = context.find_locals(ex);
-		std::clog << "arg" << i++ << "'s type: ";
-		val->getType()->print(context.llclog);
-		(context.llclog << "\n").flush();
+		context.dclog << "arg" << i++ << "'s type: " << std::flush;
+		if (context.dclog.max_level >= debug_stream::info) {
+			val->getType()->print(context.llclog);
+			(context.llclog << "\n").flush();
+		}
 		args.push_back(val);
 	}
-	auto call = CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
+	context.dclog << debug_stream::indent(2, -1);
 
-	return call;
+	return CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
 }
 
 Value* NBinaryOperator::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating binary operation " << op << std::endl;
+	context.dclog << debug_stream::info << "Creating binary operation " << op << std::endl;
 	Instruction::BinaryOps instr;
 	Instruction::OtherOps cmpinstr;
 	ICmpInst::Predicate pred;
+	context.dclog << "Generating lhs" << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
 	auto lhs_v = lhs.codeGen(context);
+	context.dclog << debug_stream::info << debug_stream::indent(2, -1);
+	context.dclog << "Generating rhs" << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
 	auto rhs_v = rhs.codeGen(context);
-	context.llclog << "The operands' types are ";
-	lhs_v->getType()->print(context.llclog);
-	context.llclog << " and ";
-	rhs_v->getType()->print(context.llclog);
-	(context.llclog << "\n").flush();
+	context.dclog << debug_stream::info << debug_stream::indent(2, -1) << "The operands' types are " << std::flush;
+	if (context.dclog.max_level >= debug_stream::info) {
+		lhs_v->getType()->print(context.llclog);
+		(context.llclog << " and ").flush();
+		rhs_v->getType()->print(context.llclog);
+		(context.llclog << "\n").flush();
+	}
 	//Int64 operands
 	if (lhs_v->getType() == Type::getInt64Ty(context.llvmContext) && rhs_v->getType() == Type::getInt64Ty(context.llvmContext)) {
 		cmpinstr = Instruction::ICmp;
@@ -305,9 +324,8 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 			arg.push_back(lhs_v_d);
 			arg.push_back(rhs_v_d);
 			auto fun = context.globalFun.at("pow");
-			auto call = CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
 
-			return call;
+			return CallInst::Create(fun, makeArrayRef(arg), "llvm.pow.f64", context.currentBlock());
 
 		}
 	mathd:
@@ -317,18 +335,21 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 		return FCmpInst::Create(cmpinstr, pred, lhs_v_d, rhs_v_d,
 		                        "", context.currentBlock());
 	}
-	assert(op == TNOT);
+	if (op != TNOT) {
+		std::cerr << "Error binop used" << std::endl;
+		exit(0);
+	}
 	return ConstantInt::get(Type::getInt1Ty(context.llvmContext), !(static_cast<NValue&>(rhs).getValue()));
 }
 
 Value* NAssignment::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating assignment for " << lhs.name << std::endl;
+	context.dclog << debug_stream::info << "Creating assignment for " << lhs.name << std::endl;
 
 	Value* loc;
 	if (!((loc = context.find_locals(lhs.name)))) {
 		std::cerr << "undeclared variable " << lhs.name << std::endl;
-		assert(false);
+		exit(1);
 	}
 	auto val = rhs.codeGen(context);
 	return new StoreInst(val, loc, false, context.currentBlock());
@@ -337,24 +358,33 @@ Value* NAssignment::codeGen(CodeGenContext& context)
 Value* NBlock::codeGen(CodeGenContext& context)
 {
 	Value* last = nullptr;
+	context.dclog << debug_stream::info << "Creating block " << this << std::endl;
+	context.dclog << debug_stream::indent(1, +1);
 	for (StatementList::const_iterator it = statements.begin(); it != statements.end(); ++it) {
-		std::clog << "Generating code for " << typeid(**it).name() << std::endl;
-		last = (**it).codeGen(context);
+		context.dclog << debug_stream::info << "Generating code with " << typeid(**it).name() << " in " << this << std::endl;
+		context.dclog << debug_stream::indent(1, +1);
+		last = (*it)->codeGen(context);
+		context.dclog << debug_stream::indent(1, -1);
 	}
-	std::clog << "Creating block" << std::endl;
+	context.dclog << debug_stream::indent(1, -1);
+	context.dclog << debug_stream::info << "-Created block " << this << std::endl;
 	return last;
 }
 
 Value* NExpressionStatement::codeGen(CodeGenContext& context)
 {
-	std::clog << "Generating code for " << typeid(expression).name() << std::endl;
+	context.dclog << "Generating code for " << typeid(expression).name() << std::endl;
 	return expression.codeGen(context);
 }
 
 Value* NReturnStatement::codeGen(CodeGenContext& context)
 {
-	std::clog << "Generating return code for " << typeid(expression).name() << std::endl;
+	context.dclog << debug_stream::info << "Generating return code in " << this << " with " << typeid(expression).name() << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
 	auto returnValue = expression.codeGen(context);
+	context.dclog << debug_stream::indent(2, -1);
+	context.dclog << debug_stream::info << "-Generated return code " << this << std::endl;
+
 	context.setCurrentReturnValue(returnValue);
 	return returnValue;
 }
@@ -363,19 +393,29 @@ Value* NIfBlock::codeGen(CodeGenContext& context)
 {
 	std::vector<Type*> argTypes;
 	VariableList::const_iterator it;
+	context.dclog << debug_stream::info << "Creating if " << this << std::endl;
+	context.dclog << debug_stream::indent(1, +1);
+
 	auto ftype = FunctionType::get(Type::getVoidTy(context.llvmContext), makeArrayRef(argTypes), false);
 	auto fake = Function::Create(ftype, GlobalValue::InternalLinkage, "", context.module);
 	auto iff = context.currentBlock()->getParent();
-	auto bblock = BasicBlock::Create(context.llvmContext, "if_" + context.trace(), iff);
-	auto ThenBB = BasicBlock::Create(context.llvmContext, "then_" + context.trace(), iff);
-	auto ElseBB = BasicBlock::Create(context.llvmContext, "else_" + context.trace(), iff);
-	auto MergeBB = BasicBlock::Create(context.llvmContext, "merge_" + context.trace(), iff);
+	auto bblock = BasicBlock::Create(context.llvmContext, context.trace() + "if", iff);
+	auto then_bb = BasicBlock::Create(context.llvmContext, context.trace() + "then", iff);
+	auto else_bb = BasicBlock::Create(context.llvmContext, context.trace() + "else", iff);
+	auto merge_bb = BasicBlock::Create(context.llvmContext, context.trace() + "merge", iff);
 	BranchInst::Create(bblock, context.currentBlock());
 
 	context.pushBlock(bblock, "if", true);
+	context.dclog << debug_stream::info << "Generating if condition in " << this << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
 	auto vcond = castBoolean(cond.codeGen(context), context);
+	context.dclog << debug_stream::indent(2, -1);
+	context.dclog << debug_stream::info << "-Generated if condition in " << this << std::endl;
+
+
 	auto tmp = BasicBlock::Create(context.llvmContext, "tmp_" + context.trace(), fake);
-	std::clog << "START type infer" << std::endl;
+	context.dclog << debug_stream::info << "Start type infer in " << this << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
 	context.pushBlock(tmp, "tmp", true);
 	auto thenType = thenblock.codeGen(context)->getType();
 	auto elseType = elseblock.codeGen(context)->getType();
@@ -383,50 +423,63 @@ Value* NIfBlock::codeGen(CodeGenContext& context)
 	context.popBlock();
 	tmp->eraseFromParent();
 	fake->eraseFromParent();
-	std::clog << "FINISH type infer" << std::endl;
-	std::clog << "then Type" << std::endl;
-	thenType->print(context.llclog);
-	(context.llclog << "\n").flush();
-	std::clog << "else Type" << std::endl;
-	elseType->print(context.llclog);
-	(context.llclog << "\n").flush();
-	std::clog << std::endl;
-	assert(thenType == elseType && "elseblock and thenblock must have the same type!");
-	auto alloc = new AllocaInst(elseType, "ifv", context.currentBlock());
+	context.dclog << debug_stream::indent(2, -1);
+	context.dclog << debug_stream::info << "-Finish type infer in " << this << std::endl;
+	if (context.dclog.max_level >= debug_stream::info) {
+		context.dclog << "type of then block: " << std::flush;
+		thenType->print(context.llclog);
+		(context.llclog << "\n").flush();
+		context.dclog << "type of else block: " << std::flush;
+		elseType->print(context.llclog);
+		(context.llclog << "\n").flush();
+	}
+	if (thenType != elseType) {
+		std::cerr << "elseblock and thenblock must have the same type!" << std::endl;
+		exit(0);
+	}
+	auto alloc = new AllocaInst(elseType, context.module->getDataLayout().getAllocaAddrSpace(), "ifv", context.currentBlock());
 	auto CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond, ConstantInt::get(Type::getInt1Ty(context.llvmContext), 0), "cond");
-	BranchInst::Create(ThenBB, ElseBB, CondInst, context.currentBlock());
+	BranchInst::Create(then_bb, else_bb, CondInst, context.currentBlock());
 
-	std::clog << "Creating Then" << std::endl;
-	context.pushBlock(ThenBB, "then", true);
+	context.dclog << debug_stream::info << "Creating then block in " << this << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
+	context.pushBlock(then_bb, "then", true);
 	auto thenValue = thenblock.codeGen(context);
 	auto thenStore = new StoreInst(thenValue, alloc, false, context.currentBlock());
 	context.setCurrentReturnValue(thenStore);
-	BranchInst::Create(MergeBB, context.currentBlock());
-	context.popBlockUntil(ThenBB);
+	BranchInst::Create(merge_bb, context.currentBlock());
+	context.popBlockUntil(then_bb);
 	context.popBlock();
+	context.dclog << debug_stream::indent(2, -1);
+	context.dclog << debug_stream::info << "-Created then block in " << this << std::endl;
 
-
-	std::clog << "Creating Else" << std::endl;
-	context.pushBlock(ElseBB, "else", true);
+	context.dclog << debug_stream::info << "Creating else block " << this << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
+	context.pushBlock(else_bb, "else", true);
 	auto elseValue = elseblock.codeGen(context);
 	auto elseStore = new StoreInst(elseValue, alloc, false, context.currentBlock());
 	context.setCurrentReturnValue(elseStore);
-	BranchInst::Create(MergeBB, context.currentBlock());
-	context.popBlockUntil(ElseBB);
+	BranchInst::Create(merge_bb, context.currentBlock());
+	context.popBlockUntil(else_bb);
 	context.popBlock();
+	context.dclog << debug_stream::indent(2, -1);
+	context.dclog << debug_stream::info << "-Created else block in " << this << std::endl;
+
+
 	context.popBlockUntil(bblock);
 	context.popBlock();
-
-	context.pushBlock(MergeBB, "join", true);
+	context.dclog << debug_stream::indent(1, -1);
+	context.pushBlock(merge_bb, "merge", true);
+	context.dclog << debug_stream::info << "-Created if " << this << std::endl;
 	return new LoadInst(alloc, "", false, context.currentBlock());
 }
 
 Value* NWhileBlock::codeGen(CodeGenContext& context)
 {
 	auto iff = context.currentBlock()->getParent();
-	auto bblock = BasicBlock::Create(context.llvmContext, "while_" + context.trace(), iff);
-	auto then_bb = BasicBlock::Create(context.llvmContext, "do_" + context.trace(), iff);
-	auto merge_bb = BasicBlock::Create(context.llvmContext, "join_" + context.trace(), iff);
+	auto bblock = BasicBlock::Create(context.llvmContext, context.trace() + "while", iff);
+	auto then_bb = BasicBlock::Create(context.llvmContext, context.trace() + "do", iff);
+	auto merge_bb = BasicBlock::Create(context.llvmContext, context.trace() + "join", iff);
 	BranchInst::Create(bblock, context.currentBlock());
 
 	context.pushBlock(bblock, "while", true);
@@ -437,7 +490,8 @@ Value* NWhileBlock::codeGen(CodeGenContext& context)
 	Value* CondInst = new ICmpInst(*context.currentBlock(), ICmpInst::ICMP_NE, vcond, ConstantInt::get(Type::getInt1Ty(context.llvmContext), 0), "cond");
 	BranchInst::Create(then_bb, merge_bb, CondInst, context.currentBlock());
 
-	std::clog << "Creating While" << std::endl;
+	context.dclog << debug_stream::info << "Creating while" << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
 	context.pushBlock(then_bb, "do", true);
 	doblock.codeGen(context);
 	BranchInst::Create(bblock, context.currentBlock());
@@ -445,6 +499,7 @@ Value* NWhileBlock::codeGen(CodeGenContext& context)
 	context.popBlock();
 	context.popBlockUntil(bblock);
 	context.popBlock();
+	context.dclog << debug_stream::indent(2, -1);
 
 	context.pushBlock(merge_bb, "join", true);
 	return condv;
@@ -452,63 +507,99 @@ Value* NWhileBlock::codeGen(CodeGenContext& context)
 
 Value* NVariableDefinition::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating variable declaration " << type.name << " " << id.name << std::endl;
-	auto alloc = new AllocaInst(typeOf(type, context), id.name.c_str(), context.currentBlock());
+	context.dclog << debug_stream::info << "Creating variable declaration " << type.name << " " << id.name << std::endl;
+	auto alloc = new AllocaInst(typeOf(type, context), context.module->getDataLayout().getAllocaAddrSpace(), id.name.c_str(), context.currentBlock());
 	context.locals()[id.name] = alloc;
 	if (assignmentExpr != nullptr) {
+		context.dclog << debug_stream::info << "Creating initializer " << type.name << " " << id.name << std::endl;
 		NAssignment assn(id, *assignmentExpr);
+		context.dclog << debug_stream::indent(2, +1);
 		assn.codeGen(context);
+		context.dclog << debug_stream::indent(2, -1);
 	}
 	return alloc;
 }
 
 Value* NExternDeclaration::codeGen(CodeGenContext& context)
 {
+	context.dclog << debug_stream::info << "Creatinge extern declaration " << type.name << " " << id.name << "( ";
 	std::vector<Type*> argTypes;
 	for (VariableList::const_iterator it = arguments.begin(); it != arguments.end(); ++it) {
-		argTypes.push_back(typeOf((**it).type, context));
+		context.dclog << (*it)->type.name << " ";
+		argTypes.push_back(typeOf((*it)->type, context));
 	}
-	FunctionType* ftype = FunctionType::get(typeOf(type, context), makeArrayRef(argTypes), false);
-	Function* function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.module);
+	context.dclog << ")" << std::endl;
+	auto ftype = FunctionType::get(typeOf(type, context), makeArrayRef(argTypes), false);
+	auto function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.module);
 	return function;
 }
 
 Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 {
-	std::clog << "Creating function: " << id.name << std::endl;
+	static std::map<std::string, std::map<std::string, Function*>> def;
+	context.dclog << debug_stream::info << "Creating function: " << id.name << std::endl;
+	if(def[context.ftrace()].find(id.name) != def[context.ftrace()].end()) {
+		context.dclog << "Found function: " << id.name << " at " << context.ftrace() << std::endl;
+		if (local) {
+			context.locals()[context.ftrace() + "__fn_" + id.name] = def[context.ftrace()][id.name];
+		}
+		return def[context.ftrace()][id.name];
+	}
+
 	std::vector<Type*> argTypes;
 
 	for (auto it = arguments.begin(); it != arguments.end(); ++it) {
-		argTypes.push_back(typeOf((**it).type, context));
+		argTypes.push_back(typeOf((*it)->type, context));
 	}
-	FunctionType* ftype = FunctionType::get(typeOf(type, context), makeArrayRef(argTypes), false);
-	Function* function = local ?
-		                     Function::Create(ftype, GlobalValue::PrivateLinkage, context.ftrace() + "__fn_" + id.name, context.module)
-		                     : Function::Create(ftype, GlobalValue::InternalLinkage, id.name, context.module);
+	auto ftype = FunctionType::get(typeOf(type, context), makeArrayRef(argTypes), false);
+	auto function = local ?
+		                Function::Create(ftype, GlobalValue::PrivateLinkage, context.ftrace() + "__fn_" + id.name, context.module)
+		                : Function::Create(ftype, GlobalValue::InternalLinkage, id.name, context.module);
 	if (local) {
 		context.locals()[context.ftrace() + "__fn_" + id.name] = function;
 	}
-	std::clog << "Fn:Creating BasicBlocks:" << function << std::endl;
+	context.dclog << "Creating basicblock " << function << std::endl;
 	auto bblock = BasicBlock::Create(context.llvmContext, "entry", function, nullptr);
 	context.pushBlock(bblock, "fn_" + id.name, local, true);
 	context.funcBlocks.emplace_back("fn_" + id.name);
 	auto argsValues = function->arg_begin();
 	std::vector<Value*> storeInst;
 	for (auto it = arguments.begin(); it != arguments.end(); ++it) {
-		(**it).codeGen(context);
+		context.dclog << debug_stream::info << "Setting argument " << (*it)->id.name << std::endl;
+		context.dclog << debug_stream::indent(2, +1);
+		(*it)->codeGen(context);
 		Value* argumentValue = &(*argsValues++);
 		argumentValue->setName((*it)->id.name);
 		auto inst = new StoreInst(argumentValue, context.locals()[(*it)->id.name], false, bblock);
 		storeInst.push_back(inst);
+		context.dclog << debug_stream::indent(2, -1);
 	}
-	block.codeGen(context);
+	context.dclog << "Generating function body for " << id.name << std::endl;
+	context.dclog << debug_stream::indent(2, +1);
+	auto blockv = block.codeGen(context);
+	if (context.getCurrentReturnValue() == nullptr) {
+		context.setCurrentReturnValue(blockv);
+	}
+	context.dclog << debug_stream::indent(2, -1);
+	context.dclog << "-Generated function body for " << id.name << std::endl;
+	context.dclog << debug_stream::verbose <<  "Current ftrace: " << context.ftrace() << ", " << context.extra[context.ftrace(1) + "__fn_" + id.name].size() << std::endl;
+	context.dclog << debug_stream::info;
 	if (local && context.extra[context.ftrace(1) + "__fn_" + id.name].size() != 0) {
-		std::clog << "Fn:Recreating local function with extra" << id.name << std::endl;
+		context.dclog << "Recreating local function " << id.name << std::endl;
+		context.dclog << debug_stream::indent(2, +1);
+		bblock->eraseFromParent();
+		function->removeFromParent();
+		//for(auto func:def[context.ftrace()]) {
+		//	context.dclog << debug_stream::verbose << "Erasing " << func.first << std::endl;
+		//	func.second->eraseFromParent();
+		//}
+		//def[context.ftrace()].clear();
+		delete function;
+		context.dclog << debug_stream::info;
+		context.dclog << debug_stream::indent(2, -1);
 		context.popBlockUntil(bblock);
 		context.popBlock();
 		context.funcBlocks.pop_back();
-		bblock->eraseFromParent();
-		function->eraseFromParent();
 		for (auto ex: context.extra[context.ftrace() + "__fn_" + id.name]) {
 			argTypes.push_back(context.find_locals(ex)->getType());
 		}
@@ -520,30 +611,42 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 		context.funcBlocks.emplace_back("fn_" + id.name);
 
 		argsValues = function->arg_begin();
-		std::clog << "Arg " << function->arg_size() << std::endl;
 		for (auto it = arguments.begin(); it != arguments.end(); ++it) {
-			std::clog << "Setting arg " << (*it)->id.name << std::endl;
+			context.dclog << debug_stream::info << "Setting argument " << (*it)->id.name << std::endl;
+			context.dclog << debug_stream::indent(2, +1);
 			(*it)->codeGen(context);
 			Value* argumentValue = &(*argsValues++);
-
 			argumentValue->setName((*it)->id.name);
 			auto inst = new StoreInst(argumentValue, context.locals()[(*it)->id.name], false, bblock);
 			storeInst.push_back(inst);
+			context.dclog << debug_stream::indent(2, -1);
 		}
 		for (auto ex: context.extra[context.ftrace(1) + "__fn_" + id.name]) {
-			std::clog << "Setting extra arg " << ex << std::endl;
+			context.dclog << debug_stream::info << "Setting extra argument " << ex << std::endl;
 			if (argsValues == function->arg_end()) {
-				assert(false);
+				std::cerr << "Argument count mismatch!" << std::endl;
+				exit(1);
 			}
 			Value* argumentPointer = &(*argsValues++);
 			argumentPointer->setName(context.ftrace() + ex);
 			context.locals()[ex] = argumentPointer;
 		}
-		block.codeGen(context);
+		context.dclog << "Generating function body for " << id.name << std::endl;
+		context.dclog << debug_stream::indent(2, +1);
+		blockv = block.codeGen(context);
+		if (context.getCurrentReturnValue() == nullptr) {
+			context.setCurrentReturnValue(blockv);
+		}
+		context.dclog << debug_stream::indent(2, -1);
+		context.dclog << "-Generated function body for " << id.name << std::endl;
+		context.dclog << debug_stream::verbose <<  "Current ftrace: " << context.ftrace(1) << ", " << context.extra[context.ftrace(1) + "__fn_" + id.name].size() << std::endl;
+		context.dclog << debug_stream::info;
 	}
+	
 	ReturnInst::Create(context.llvmContext, context.getCurrentReturnValue(), context.currentBlock());
 	context.popBlockUntil(bblock);
 	context.popBlock();
 	context.funcBlocks.pop_back();
+	def[context.ftrace()].insert_or_assign(id.name, function);
 	return function;
 }

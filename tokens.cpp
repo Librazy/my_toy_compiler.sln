@@ -1037,7 +1037,7 @@ return TOKEN(TDIV);
 case 38:
 YY_RULE_SETUP
 #line 57 "tokens.l"
-std::cerr<<"Unknown token!"<<std::endl; yyterminate();
+std::cerr<<"Unknown token!"<< std::string(yytext, yyleng) <<std::endl; yyterminate();
 	YY_BREAK
 case 39:
 YY_RULE_SETUP

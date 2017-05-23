@@ -12,11 +12,11 @@ Function* createPrintfFunction(CodeGenContext& context)
 	vector<Type*> printf_arg_types;
 	printf_arg_types.push_back(Type::getInt8PtrTy(context.llvmContext)); //char*
 
-	FunctionType* printf_type =
+	auto printf_type =
 			FunctionType::get(
 				Type::getInt32Ty(context.llvmContext), makeArrayRef(printf_arg_types), true);
 
-	Function* func = Function::Create(
+	auto func = Function::Create(
 		printf_type, Function::ExternalLinkage,
 		Twine("printf"),
 		context.module
@@ -114,7 +114,7 @@ void createEchodFunction(CodeGenContext& context, Function* printfFn)
 
 void createCoreFunctions(CodeGenContext& context)
 {
-	Function* printfFn = createPrintfFunction(context);
+	auto printfFn = createPrintfFunction(context);
 	createEchoFunction(context, printfFn);
 	createEchodFunction(context, printfFn);
 }
